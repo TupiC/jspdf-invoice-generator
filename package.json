@@ -4,7 +4,9 @@
   "description": "PDF template created for invoice with optional parameters. Using jsPDF library.",
   "main": "./dist/index.js",
   "scripts": {
-    "build": "tsc"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
   },
   "repository": {
     "type": "git",
@@ -29,6 +31,7 @@
     "jspdf": "^2.5.2"
   },
   "devDependencies": {
-    "typescript": "^4.9.5"
+    "typescript": "~5.6.2",
+    "vite": "^6.0.2"
   }
 }
