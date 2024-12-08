@@ -1,11 +1,10 @@
 import { jsPDF, jsPDFOptions } from "jspdf";
 import { CurrentHeight, InvoiceProps, ReturnObj } from "./types/invoice.types";
-import { addHeight, getPdfConfig, handleSave, splitTextAndGetHeight } from './utils/pdf';
-import { addBusinessInfo, addClientAndInvoiceInfo } from './utils/invoice';
+import { addHeight, addText, getPdfConfig, handleSave, setFontColor, setFontSize, splitTextAndGetHeight } from './utils/pdf';
+import { addBusinessInfo, addClientAndInvoiceInfo, addInvoiceDesc } from './utils/invoice';
 import { addTableHeader, getColumnAmount } from './utils/table/header';
 import { addTableBody } from './utils/table/body';
 
-let currentHeight: CurrentHeight = { value: 0 };
 
 function jsPDFInvoiceTemplate(props: InvoiceProps) {
   if (!props.invoice?.table || !props.invoice?.header) {
@@ -18,19 +17,21 @@ function jsPDFInvoiceTemplate(props: InvoiceProps) {
     throw Error("Length of header and table column must be equal.");
   }
 
+  let currentHeight: CurrentHeight = { value: 0 };
+
   const options: jsPDFOptions = {
-    orientation: props.orientation,
-    compress: props.compress,
+    orientation: props.pdfConfig?.orientation,
+    compress: props.pdfConfig?.compress,
   };
 
   const doc = new jsPDF(options);
   props.onJsPDFDocCreation && props.onJsPDFDocCreation(doc);
+  console.log(doc.getPageInfo(1))
   const docWidth = doc.internal.pageSize.width;
   const docHeight = doc.internal.pageSize.height;
   const pdfConfig = getPdfConfig(props);
 
-  addHeight(currentHeight, pdfConfig.startingAt);
-
+  addHeight(currentHeight, pdfConfig.margin.top);
   addBusinessInfo(doc, pdfConfig, currentHeight, docWidth, props);
 
   if (props.invoice.borderAfterHeader) {
@@ -56,16 +57,15 @@ function jsPDFInvoiceTemplate(props: InvoiceProps) {
     docWidth / 2
   ).height;
 
-  //#region PAGE BREAKER
   const checkAndAddPageLandscape = () => {
-    if (props.orientation === "landscape" && currentHeight.value + invDescSize > 270) {
+    if (pdfConfig.orientation === "landscape" && currentHeight.value + invDescSize > 270) {
       doc.addPage();
       currentHeight.value = 10;
     }
   }
 
   const checkAndAddPagePortrait = (heightLimit = 173) => {
-    if (props.orientation === "portrait" && currentHeight.value + invDescSize > heightLimit) {
+    if (pdfConfig.orientation === "portrait" && currentHeight.value + invDescSize > heightLimit) {
       doc.addPage();
       currentHeight.value = 10;
     }
@@ -75,98 +75,66 @@ function jsPDFInvoiceTemplate(props: InvoiceProps) {
     checkAndAddPagePortrait();
     checkAndAddPageLandscape();
   }
-  //#endregion
 
   checkAndAddPage();
 
-  doc.setTextColor(pdfConfig.headerFontColor);
-  doc.setFontSize(pdfConfig.labelTextSize);
+  setFontColor(doc, pdfConfig.headerFontColor);
+  setFontSize(doc, pdfConfig.labelTextSize);
   currentHeight.value += pdfConfig.lineHeight;
 
-  //#region additionalRows
-  if (props.invoice.additionalRows?.length || 0 > 0) {
-    //#region Line breaker before invoce total
-    doc.line(docWidth / 2, currentHeight.value, docWidth - 10, currentHeight.value);
+  if (props.invoice.additionalRows && props.invoice.additionalRows.length > 0) {
+    doc.line(docWidth / 2, currentHeight.value, docWidth - pdfConfig.margin.right, currentHeight.value);
     currentHeight.value += pdfConfig.lineHeight;
-    //#endregion
 
     for (const row of props.invoice.additionalRows || []) {
       currentHeight.value += pdfConfig.lineHeight;
-      doc.setFontSize(row?.style?.fontSize || pdfConfig.fieldTextSize);
+      setFontSize(doc, row?.style?.fontSize || pdfConfig.fieldTextSize)
 
-      doc.text(row.col1 || "", docWidth / 1.5, currentHeight.value, { align: "right" });
-      doc.text(row.col2 || "", docWidth - 25, currentHeight.value, { align: "right" });
-      doc.text(row.col3 || "", docWidth - 10, currentHeight.value, { align: "right" });
+      addText(doc, row.col1 || "", docWidth / 1.5, currentHeight.value, { align: "right" })
+      addText(doc, row.col2 || "", docWidth - 5 - pdfConfig.margin.right, currentHeight.value, { align: "right" })
+      addText(doc, row.col3 || "", docWidth - pdfConfig.margin.right, currentHeight.value, { align: "right" })
       checkAndAddPage();
     }
-    //#endregion
 
     checkAndAddPage();
 
-    doc.setTextColor(pdfConfig.headerFontColor);
+    setFontColor(doc, pdfConfig.headerFontColor)
     addHeight(currentHeight, pdfConfig.subLineHeight);
     addHeight(currentHeight, pdfConfig.subLineHeight);
-    doc.setFontSize(pdfConfig.labelTextSize);
+    setFontSize(doc, pdfConfig.labelTextSize)
 
-    //#region Add num of pages at the bottom
     if (doc.getNumberOfPages() > 1) {
-      for (let i = 1; i <= doc.getNumberOfPages(); i++) {
-        doc.setFontSize(pdfConfig.fieldTextSize - 2);
-        doc.setTextColor(pdfConfig.textFontColor);
+      for (let i = 0; i < doc.getNumberOfPages(); i++) {
+        setFontSize(doc, pdfConfig.fieldTextSize - 2)
+        setFontColor(doc, pdfConfig.textFontColor)
 
         if (props.pageEnable) {
-          doc.text(props.footer?.text || "", docWidth / 2, docHeight - pdfConfig.margin.bottom, { align: "center", maxWidth: docWidth - pdfConfig.margin.left - pdfConfig.margin.right });
-          doc.setPage(i);
-          doc.text(
-            props.pageLabel + " " + i + " / " + doc.getNumberOfPages(),
-            docWidth - pdfConfig.margin.right,
-            doc.internal.pageSize.height - 6
-          );
+          addText(doc, props.footer?.text || "", docWidth / 2, docHeight - pdfConfig.margin.bottom, { align: "center", maxWidth: docWidth - pdfConfig.margin.left - pdfConfig.margin.right })
+          doc.setPage(i + 1);
+          addText(doc, `${props.pageLabel} ${i + 1} ${props.pageDelimiter || '/'} ${doc.getNumberOfPages()}`, docWidth - pdfConfig.margin.right, doc.internal.pageSize.height - 6)
         }
 
         checkAndAddPagePortrait(183);
         checkAndAddPageLandscape();
-        // addStamp();
       }
     }
-    //#endregion
 
-    //#region INVOICE DESCRIPTION
-    const addInvoiceDesc = () => {
-      doc.setFontSize(pdfConfig.labelTextSize);
-      doc.setTextColor(pdfConfig.headerFontColor);
 
-      doc.text(props.invoice?.invDescLabel || "", 10, currentHeight.value);
-      addHeight(currentHeight, pdfConfig.subLineHeight);
-      doc.setTextColor(pdfConfig.textFontColor);
-      doc.setFontSize(pdfConfig.fieldTextSize - 1);
+    addInvoiceDesc(doc, pdfConfig, props, currentHeight, docWidth)
 
-      const lines = doc.splitTextToSize(props.invoice?.invDesc || "", docWidth / 2);
-      //text in left half
-      doc.text(lines, pdfConfig.margin.left, currentHeight.value);
-      currentHeight.value +=
-        doc.getTextDimensions(lines).h > 5
-          ? doc.getTextDimensions(lines).h + 6
-          : pdfConfig.lineHeight;
-
-      return currentHeight.value;
-    };
-    addInvoiceDesc();
-    //#endregion
-
-    // addStamp();
+    // addStamp(); //TODO
 
     //#region Add num of first page at the bottom
     if (doc.getNumberOfPages() === 1 && props.pageEnable) {
-      doc.setFontSize(pdfConfig.fieldTextSize - 2);
-      doc.setTextColor(pdfConfig.textFontColor);
-      doc.text(props.footer?.text || "", docWidth / 2, docHeight - pdfConfig.margin.bottom, { align: "center", maxWidth: docWidth - pdfConfig.margin.left - pdfConfig.margin.right });
-      doc.text(
-        props.pageLabel + "1 / 1",
+      setFontSize(doc, pdfConfig.fieldTextSize - 2);
+      setFontColor(doc, pdfConfig.textFontColor);
+      addText(doc, props.footer?.text || "", docWidth / 2, docHeight - pdfConfig.margin.bottom, { align: "center", maxWidth: docWidth - pdfConfig.margin.left - pdfConfig.margin.right })
+      addText(doc,
+        `${props.pageLabel} 1 ${props.pageDelimiter || '/'} 1`,
         docWidth - pdfConfig.margin.right,
         docHeight - pdfConfig.margin.bottom,
         { align: "right" }
-      );
+      )
     }
     //#endregion
 
@@ -193,11 +161,11 @@ document.getElementById("test")?.addEventListener("click", () => {
     },
     returnJsPDFDocObject: true,
     fileName: `Rechnung.pdf`,
-    orientation: "portrait",
-    compress: true,
     pdfConfig: {
+      compress: true,
+      orientation: "portrait",
       margin: {
-        left: 20,
+        right: 20,
       }
     },
     logo: {
@@ -216,12 +184,12 @@ document.getElementById("test")?.addEventListener("click", () => {
       inAllPages: false,
     },
     business: {
-      name: "Gourmet-Jausen",
+      name: "Test",
       address: "8962 Gröbming, Wiesackstraße 1020",
       phone: "+43 660 85 70 879",
-      email: "office@gourmet-jausen.at",
+      email: "office@test.at",
       email_1: "",
-      website: "www.gourmet-jausen.at",
+      website: "www.test.at",
     },
     client: {
       name: "fullName",
@@ -230,12 +198,13 @@ document.getElementById("test")?.addEventListener("click", () => {
       phone: "phone",
       email: "data.email",
     },
+    pageDelimiter: "/",
     invoice: {
       label: "Rechnung #: ",
       num: 1,
       invDate: `Rechnungsdatum:`,
-      headerBorder: false,
-      tableBodyBorder: false,
+      headerBorder: true,
+      tableBodyBorder: true,
       header:
         [
           {
@@ -260,35 +229,51 @@ document.getElementById("test")?.addEventListener("click", () => {
           { text: "Einheit" },
           { text: "Gesamt" }
         ],
-      table: [[{
-        text: "1",
-      }, {
-        text: "Käse",
-      }, {
-        text: "€ 10",
-      }, {
-        text: "2",
-      }, {
-        text: "Stk",
-      }, {
-        text: "€ 20",
-      }
-      ],
-      [{
-        text: "2",
-      }, {
-        text: "Käse",
-      }, {
-        text: "€ 10",
-      }, {
-        text: "2",
-      }, {
-        text: "Stk",
-      }, {
-        text: "€ 20",
-      }
-      ],
-      ],
+      table: [[
+        { text: "1" },
+        {
+          text: `Produkt 1`,
+          style: {
+            align: 'left',
+          }
+        },
+        {
+          text: `10`,
+          style: {
+            align: 'right',
+          }
+        },
+        { text: `1` },
+        { text: `Stk` },
+        {
+          text: `10`,
+          style: {
+            align: 'right',
+          }
+        }
+      ], [
+        { text: "1" },
+        {
+          text: `Produkt 1`,
+          style: {
+            align: 'left',
+          }
+        },
+        {
+          text: `10`,
+          style: {
+            align: 'right',
+          }
+        },
+        { text: `1` },
+        { text: `Stk` },
+        {
+          text: `10`,
+          style: {
+            align: 'right',
+          }
+        }
+      ]],
       additionalRows: [
         {
           col1: 'Zwischensumme:',
@@ -313,7 +298,7 @@ document.getElementById("test")?.addEventListener("click", () => {
           }
         },
       ],
-      invDesc: "Hinweis: Umsatzsteuerbefreit gemäß § 6 Abs. 1 Z 27 UStG\n\nBitte überweisen Sie den Betrag innerhalb von 14 Tagen auf das Konto: Gourmet-Jausen, AT123456789012345678, BIC: ABCDEFKH",
+      invDesc: "Hinweis: Umsatzsteuerbefreit gemäß § 6 Abs. 1 Z 27 UStG. Bitte überweisen Sie den Betrag innerhalb von 14 Tagen auf das Konto: Test, AT123456789012345678, BIC: ABCDEFKH",
       invDescLabel: ''
     },
     footer: {

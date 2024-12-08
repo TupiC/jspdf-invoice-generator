@@ -18,17 +18,18 @@ export const getPdfConfig = (props: InvoiceProps) => {
         subLineHeight: props.pdfConfig?.subLineHeight || 4,
         headerFontColor: props.pdfConfig?.headerFontColor || "#000000",
         textFontColor: props.pdfConfig?.textFontColor || "#4d4e53",
-        startingAt: props.pdfConfig?.startingAt || 15,
         margin: {
             bottom: props.pdfConfig?.margin?.bottom || 10,
-            top: props.pdfConfig?.margin?.top || 10,
+            top: props.pdfConfig?.margin?.top || 15,
             left: props.pdfConfig?.margin?.left || 10,
-            right: props.pdfConfig?.margin?.bottom || 10,
+            right: props.pdfConfig?.margin?.right || 10,
         },
         spacing: {
             beforeTable: props.pdfConfig?.spacing?.beforeTable || 10,
             afterBusinessInfo: props.pdfConfig?.spacing?.afterBusinessInfo || 10,
-        }
+        },
+        compress: props.pdfConfig?.compress || false,
+        orientation: props.pdfConfig?.orientation || 'portrait'
     }
 }
 

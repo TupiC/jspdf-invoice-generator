@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import { CurrentHeight, InvoiceProps, PdfConfig } from '../../types/invoice.types';
-import { addTableBodyBorder, addTableHeader, getMaxRowHeight } from './header';
+import { addTableHeader, getMaxRowHeight } from './header';
 import { addHeight, splitTextAndGetHeight } from '../pdf';
 
 export const addTableBody = (doc: jsPDF, props: InvoiceProps, currentHeight: CurrentHeight, docWidth: number, pdfConfig: Required<PdfConfig>, defaultColumnWidth: number) => {
@@ -14,7 +14,7 @@ export const addTableBody = (doc: jsPDF, props: InvoiceProps, currentHeight: Cur
 
         //body borders
         if (props.invoice?.tableBodyBorder) {
-            addTableBodyBorder(maxHeight + 1, doc, props, currentHeight, defaultColumnWidth, marginLeft);
+            addTableBodyBorder(maxHeight + 1, doc, props, currentHeight, defaultColumnWidth, marginLeft, marginRight);
         }
 
         let startWidth = 0;
@@ -46,7 +46,7 @@ export const addTableBody = (doc: jsPDF, props: InvoiceProps, currentHeight: Cur
         }
 
         if (
-            props.orientation &&
+            pdfConfig.orientation &&
             (currentHeight.value > 185 ||
                 (currentHeight.value > 178 && doc.getNumberOfPages() > 1))
         ) {
@@ -57,7 +57,7 @@ export const addTableBody = (doc: jsPDF, props: InvoiceProps, currentHeight: Cur
             }
         }
 
-        if (!props.orientation && (currentHeight.value > 265 || (currentHeight.value > 255 && doc.getNumberOfPages() > 1))) {
+        if (!pdfConfig.orientation && (currentHeight.value > 265 || (currentHeight.value > 255 && doc.getNumberOfPages() > 1))) {
             doc.addPage();
             currentHeight.value = 10;
             if (index + 1 < tableBodyLength) {
@@ -70,3 +70,29 @@ export const addTableBody = (doc: jsPDF, props: InvoiceProps, currentHeight: Cur
         }
     });
 }
+
+export const addTableBodyBorder = (lineHeight: number, doc: jsPDF, props: InvoiceProps, currentHeight: CurrentHeight, defaultColumnWidth: number, marginLeft: number, marginRight: number) => {
+    let startWidth = 0;
+
+    if (!props.invoice?.header) {
+        return;
+    }
+
+    for (let i = 0; i < props.invoice.header.length; i++) {
+        const currentTdWidth = props.invoice.header[i].style?.width || defaultColumnWidth;
+        if (i === 0) {
+            doc.rect(startWidth + marginLeft, currentHeight.value, currentTdWidth, lineHeight);
+        } else if (i === props.invoice.header.length - 1) {
+            const previousTdWidth = props.invoice.header[i - 1]?.style?.width || defaultColumnWidth;
+            const widthToUse = currentTdWidth == previousTdWidth ? currentTdWidth : previousTdWidth;
+            startWidth += widthToUse;
+            doc.rect(startWidth + marginLeft, currentHeight.value, doc.internal.pageSize.width - startWidth - marginRight - marginLeft, lineHeight);
+        }
+        else {
+            const previousTdWidth = props.invoice.header[i - 1]?.style?.width || defaultColumnWidth;
+            const widthToUse = currentTdWidth == previousTdWidth ? currentTdWidth : previousTdWidth;
+            startWidth += widthToUse;
+            doc.rect(startWidth + marginLeft, currentHeight.value, currentTdWidth, lineHeight);
+        }
+    }
+};

@@ -1,28 +1,34 @@
 import jsPDF from 'jspdf';
 import { CurrentHeight, InvoiceProps, PdfConfig, TableRow } from '../../types/invoice.types';
-import { addHeight, addText, setFontColor, splitTextAndGetHeight } from '../pdf';
+import { addHeight, addText, setFontColor, setFontSize, splitTextAndGetHeight } from '../pdf';
 
 export const getColumnAmount = (props: InvoiceProps) => {
     return props.invoice?.header?.length || 2;
 }
 
 export const addTableHeader = (doc: jsPDF, props: InvoiceProps, pdfConfig: Required<PdfConfig>, currentHeight: CurrentHeight, defaultColumnWidth: number) => {
+    const marginLeft = pdfConfig.margin.left || 10;
+    const marginRight = pdfConfig.margin.right || 10;
+    console.log("🚀 ~ addTableHeader ~ marginRight:", marginRight)
+
+
+
     if (props.invoice?.headerBorder) {
-        addTableHeaderBorder(doc, (pdfConfig.margin.left || 10), currentHeight, props, defaultColumnWidth);
+        addTableHeaderBorder(doc, marginLeft, marginRight, currentHeight, props, defaultColumnWidth);
     }
 
     addHeight(currentHeight, pdfConfig.subLineHeight);
-    doc.setTextColor(pdfConfig.headerFontColor);
-    doc.setFontSize(pdfConfig.fieldTextSize);
+    setFontColor(doc, pdfConfig.headerFontColor);
+    setFontSize(doc, pdfConfig.fieldTextSize);
     doc.setDrawColor(pdfConfig.textFontColor);
 
-    currentHeight.value += 2;
+    addHeight(currentHeight, 2);
 
     let startWidth = 0;
 
     props.invoice?.header?.forEach((row, index) => {
         if (index === 0) {
-            addText(doc, row.text, (pdfConfig.margin.left || 10), currentHeight.value)
+            addText(doc, row.text, marginLeft + 1, currentHeight.value)
         } else {
             const currentTdWidth = row?.style?.width || defaultColumnWidth;
             if (!props.invoice?.header) {
@@ -31,7 +37,7 @@ export const addTableHeader = (doc: jsPDF, props: InvoiceProps, pdfConfig: Requi
             const previousColumnWidth = props.invoice?.header[index - 1]?.style?.width || defaultColumnWidth;
             const widthToUse = currentTdWidth == previousColumnWidth ? currentTdWidth : previousColumnWidth;
             startWidth += widthToUse;
-            addText(doc, row.text, startWidth + (pdfConfig.margin.left || 10), currentHeight.value)
+            addText(doc, row.text, startWidth + marginLeft + 1, currentHeight.value)
         }
     });
 
@@ -40,10 +46,9 @@ export const addTableHeader = (doc: jsPDF, props: InvoiceProps, pdfConfig: Requi
 };
 
 
-export const addTableHeaderBorder = (doc: jsPDF, marginLeft: number, currentHeight: CurrentHeight, props: InvoiceProps, defaultColumnWidth: number) => {
+export const addTableHeaderBorder = (doc: jsPDF, marginLeft: number, marginRight: number, currentHeight: CurrentHeight, props: InvoiceProps, defaultColumnWidth: number) => {
     addHeight(currentHeight, 2);
 
-    const lineHeight = 7;
     let startWidth = 0;
 
     if (!props.invoice?.header) {
@@ -51,37 +56,24 @@ export const addTableHeaderBorder = (doc: jsPDF, marginLeft: number, currentHeig
     }
 
     for (let i = 0; i < props.invoice.header?.length; i++) {
+        const lineHeight = props.invoice.header[i]?.style?.height || 6;
         const currentTdWidth = props.invoice.header[i]?.style?.width || defaultColumnWidth;
         if (i === 0) {
             doc.rect(marginLeft, currentHeight.value, currentTdWidth, lineHeight);
-        } else {
+        } else if (i === props.invoice.header.length - 1) {
+            const previousTdWidth = props.invoice.header[i - 1]?.style?.width || defaultColumnWidth;
+            const widthToUse = currentTdWidth == previousTdWidth ? currentTdWidth : previousTdWidth;
+            startWidth += widthToUse;
+            doc.rect(startWidth + marginLeft, currentHeight.value, doc.internal.pageSize.width - startWidth - marginRight - marginLeft, lineHeight);
+        }
+        else {
             const previousTdWidth = props.invoice.header[i - 1]?.style?.width || defaultColumnWidth;
             const widthToUse = currentTdWidth == previousTdWidth ? currentTdWidth : previousTdWidth;
             startWidth += widthToUse;
             doc.rect(startWidth + marginLeft, currentHeight.value, currentTdWidth, lineHeight);
         }
     }
-    currentHeight.value -= 2;
-};
-
-export const addTableBodyBorder = (lineHeight: number, doc: jsPDF, props: InvoiceProps, currentHeight: CurrentHeight, defaultColumnWidth: number, marginLeft: number) => {
-    let startWidth = 0;
-
-    if (!props.invoice?.header) {
-        return;
-    }
-
-    for (let i = 0; i < props.invoice.header.length; i++) {
-        const currentTdWidth = props.invoice.header[i].style?.width || defaultColumnWidth;
-        if (i === 0) {
-            doc.rect(marginLeft, currentHeight.value, currentTdWidth, lineHeight);
-        } else {
-            const previousTdWidth = props.invoice.header[i - 1]?.style?.width || defaultColumnWidth;
-            const widthToUse = currentTdWidth == previousTdWidth ? currentTdWidth : previousTdWidth;
-            startWidth += widthToUse;
-            doc.rect(startWidth + marginLeft, currentHeight.value, currentTdWidth, lineHeight);
-        }
-    }
+    addHeight(currentHeight, -2);
 };
 
 export const getMaxRowHeight = (row: TableRow, props: InvoiceProps, doc: jsPDF, defaultColumnWidth: number) => {

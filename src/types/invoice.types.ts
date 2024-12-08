@@ -18,12 +18,13 @@ export type PdfConfig = {
     subLineHeight?: number
     headerFontColor?: string
     textFontColor?: string
-    startingAt?: number
     margin?: Margin
     spacing?: {
         beforeTable?: number
         afterBusinessInfo?: number
     }
+    orientation?: "landscape" | "portrait"
+    compress?: boolean
 }
 
 export type InvoiceProps = {
@@ -32,8 +33,6 @@ export type InvoiceProps = {
     onJsPDFDocCreation?: (doc: jsPDF) => void
     returnJsPDFDocObject?: boolean
     pdfConfig?: PdfConfig
-    orientation?: "landscape" | "portrait"
-    compress?: boolean
     logo?: Logo
     stamp?: Logo & {
         inAllPages?: boolean
@@ -70,6 +69,7 @@ export type InvoiceProps = {
     }
     pageEnable?: boolean
     pageLabel?: string
+    pageDelimiter?: string;
 }
 
 type Style = Partial<{
