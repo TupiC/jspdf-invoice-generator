@@ -1,12 +1,15 @@
 import { jsPDF, jsPDFOptions } from "jspdf";
 import { InvoiceProps, ReturnObj } from "./types/invoice.types";
-import { addText, getPdfConfig, splitTextAndGetHeight } from './utils';
+import { addImage, addHeight, addText, getPdfConfig, setFontColor, setFontSize, splitTextAndGetHeight } from './utils/pdf';
+import { addBusinessInfo, addClientAndInvoiceInfo } from './utils/invoice';
+
+let currentHeight = { value: 0 };
 
 function jsPDFInvoiceTemplate(props: InvoiceProps) {
   if (!props.invoice?.table || !props.invoice?.header) {
     throw Error("Please provide a table and a header in the invoice object.");
   }
-  if (props.invoice?.table.length && props.invoice?.table[0].entries.length != props.invoice?.header.entries.length) {
+  if (props.invoice?.table.length && props.invoice?.table[0].length != props.invoice?.header.length) {
     throw Error("Length of header and table column must be equal.");
   }
 
@@ -17,124 +20,37 @@ function jsPDFInvoiceTemplate(props: InvoiceProps) {
 
   const doc = new jsPDF(options);
   props.onJsPDFDocCreation && props.onJsPDFDocCreation(doc);
-
   const docWidth = doc.internal.pageSize.width;
   const docHeight = doc.internal.pageSize.height;
-
   const pdfConfig = getPdfConfig(props);
 
-  let currentHeight = pdfConfig.startingAt;
+  addHeight(currentHeight, pdfConfig.startingAt);
 
-  doc.setFontSize(pdfConfig.headerTextSize);
-  doc.setTextColor(pdfConfig.headerFontColor);
-  doc.text(props.business?.name || "", docWidth - pdfConfig.margin.right, currentHeight, { align: "right" });
-  doc.setFontSize(pdfConfig.fieldTextSize);
+  setFontSize(doc, pdfConfig.headerTextSize);
+  setFontColor(doc, pdfConfig.headerFontColor);
+  addText(doc, props.business?.name || "", docWidth - pdfConfig.margin.right, currentHeight.value, { align: "right" });
+  setFontSize(doc, pdfConfig.fieldTextSize);
 
   if (props.logo?.src) {
-    const imageHeader: HTMLImageElement = new Image();
-    imageHeader.src = props.logo.src;
+    const logo = new Image();
+    logo.src = props.logo.src;
 
-    if (props.logo.type)
-      doc.addImage(
-        imageHeader,
-        props.logo.type,
-        pdfConfig.margin.left + (props.logo.style?.margin?.left || 0),
-        currentHeight - 5 + (props.logo.style?.margin?.top || 0),
-        props.logo.style?.width || 64,
-        props.logo.style?.height || 64
-      );
-    else
-      doc.addImage(
-        imageHeader,
-        pdfConfig.margin.left + (props.logo.style?.margin?.left || 0),
-        currentHeight - 5 + (props.logo.style?.margin?.top || 0),
-        props.logo.style?.width || 64,
-        props.logo.style?.height || 64
-      );
+    if (props.logo.type) {
+      addImage(doc, logo, pdfConfig.margin.left + (props.logo.style?.margin?.left || 0), currentHeight.value + (props.logo.style?.margin?.top || 0), props.logo.style?.width || 64, props.logo.style?.height || 64, props.logo.type);
+    } else {
+      addImage(doc, logo, pdfConfig.margin.left + (props.logo.style?.margin?.left || 0), currentHeight.value + (props.logo.style?.margin?.top || 0), props.logo.style?.width || 64, props.logo.style?.height || 64);
+    }
   }
 
-  doc.setTextColor(pdfConfig.textFontColor);
-
-  currentHeight += pdfConfig.subLineHeight * 2;
-
-  doc.text(props.business?.address || "", docWidth - pdfConfig.margin.right, currentHeight, { align: "right" });
-  currentHeight += pdfConfig.subLineHeight;
-  doc.text(props.business?.phone || "", docWidth - pdfConfig.margin.right, currentHeight, { align: "right" });
-  doc.setFontSize(pdfConfig.fieldTextSize);
-  currentHeight += pdfConfig.subLineHeight;
-  doc.text(props.business?.email || "", docWidth - pdfConfig.margin.right, currentHeight, { align: "right" });
-  currentHeight += pdfConfig.subLineHeight;
-
-  if (props.business?.email_1) {
-    doc.text(props.business?.email_1 || "", docWidth - pdfConfig.margin.right, currentHeight, { align: "right" });
-    currentHeight += pdfConfig.subLineHeight;
-  }
-
-  doc.text(props.business?.website || "", docWidth - pdfConfig.margin.right, currentHeight, { align: "right" });
-
-  currentHeight += pdfConfig.spacing.afterBusinessInfo;
+  addBusinessInfo(doc, pdfConfig, currentHeight, docWidth, props);
 
   if (props.invoice.borderAfterHeader) {
-    doc.line(pdfConfig.margin.left, currentHeight, docWidth - pdfConfig.margin.right, currentHeight);
+    doc.line(pdfConfig.margin.left, currentHeight.value, docWidth - pdfConfig.margin.right, currentHeight.value);
   }
 
-  //client part
-  doc.setTextColor(pdfConfig.textFontColor);
-  doc.setFontSize(pdfConfig.fieldTextSize);
-  currentHeight += pdfConfig.lineHeight;
-  if (props.client?.label) {
-    doc.text(props.client.label, pdfConfig.margin.left, currentHeight);
-    currentHeight += pdfConfig.lineHeight;
-  }
+  addClientAndInvoiceInfo(doc, pdfConfig, currentHeight, docWidth, props);
 
-  doc.setTextColor(pdfConfig.headerFontColor);
-  doc.setFontSize(pdfConfig.headerTextSize - 5);
-
-  if (props.client?.name) {
-    doc.text(props.client?.name, pdfConfig.margin.left, currentHeight);
-    // currentHeight += pdfConfig.lineHeight;
-  }
-
-  if (props.invoice?.label && props.invoice?.num) {
-    doc.text(
-      props.invoice.label + props.invoice.num,
-      docWidth - pdfConfig.margin.right,
-      currentHeight,
-      { align: "right" }
-    );
-    currentHeight += pdfConfig.lineHeight;
-  }
-
-  doc.setTextColor(pdfConfig.textFontColor);
-  doc.setFontSize(pdfConfig.fieldTextSize - 2);
-
-  if (props.client?.address || props.invoice?.invDate) {
-    addText(doc, props.client?.address, pdfConfig.margin.left, currentHeight)
-    addText(doc, props.invoice?.invDate, docWidth - pdfConfig.margin.right, currentHeight, { align: "right" })
-    currentHeight += pdfConfig.subLineHeight;
-  }
-
-  if (props.client?.phone || props.invoice?.invGenDate) {
-    addText(doc, props.client?.phone, pdfConfig.margin.left, currentHeight)
-    addText(doc, props.invoice?.invGenDate, docWidth - pdfConfig.margin.right, currentHeight, { align: "right" })
-    currentHeight += pdfConfig.subLineHeight;
-  }
-
-  if (props.client?.email) {
-    doc.text(props.client.email, pdfConfig.margin.left, currentHeight);
-    currentHeight += pdfConfig.subLineHeight;
-  }
-
-
-  if (props.client?.otherInfo) {
-    doc.text(props.client.otherInfo, pdfConfig.margin.left, currentHeight);
-  }
-  else {
-    currentHeight -= pdfConfig.subLineHeight
-  }
-  //end contact part
-
-  currentHeight += pdfConfig.spacing.beforeTable;
+  addHeight(currentHeight, pdfConfig.spacing.beforeTable);
 
   //TABLE PART
 
@@ -152,7 +68,7 @@ function jsPDFInvoiceTemplate(props: InvoiceProps) {
 
   //#region TABLE HEADER BORDER
   const addTableHeaderBorder = () => {
-    currentHeight += 2;
+    currentHeight.value += 2;
     const lineHeight = 7;
     let startWidth = 0;
 
@@ -162,15 +78,15 @@ function jsPDFInvoiceTemplate(props: InvoiceProps) {
     for (let i = 0; i < props.invoice.header?.length; i++) {
       const currentTdWidth = props.invoice.header[i]?.style?.width || tdWidth;
       if (i === 0) {
-        doc.rect(pdfConfig.margin.left, currentHeight, currentTdWidth, lineHeight);
+        doc.rect(pdfConfig.margin.left, currentHeight.value, currentTdWidth, lineHeight);
       } else {
         const previousTdWidth = props.invoice.header[i - 1]?.style?.width || tdWidth;
         const widthToUse = currentTdWidth == previousTdWidth ? currentTdWidth : previousTdWidth;
         startWidth += widthToUse;
-        doc.rect(startWidth + pdfConfig.margin.left, currentHeight, currentTdWidth, lineHeight);
+        doc.rect(startWidth + pdfConfig.margin.left, currentHeight.value, currentTdWidth, lineHeight);
       }
     }
-    currentHeight -= 2;
+    currentHeight.value -= 2;
   };
   //#endregion
 
@@ -185,12 +101,12 @@ function jsPDFInvoiceTemplate(props: InvoiceProps) {
     for (let i = 0; i < props.invoice.header.length; i++) {
       const currentTdWidth = props.invoice.header[i].style?.width || tdWidth;
       if (i === 0) {
-        doc.rect(pdfConfig.margin.left, currentHeight, currentTdWidth, lineHeight);
+        doc.rect(pdfConfig.margin.left, currentHeight.value, currentTdWidth, lineHeight);
       } else {
         const previousTdWidth = props.invoice.header[i - 1]?.style?.width || tdWidth;
         const widthToUse = currentTdWidth == previousTdWidth ? currentTdWidth : previousTdWidth;
         startWidth += widthToUse;
-        doc.rect(startWidth + pdfConfig.margin.left, currentHeight, currentTdWidth, lineHeight);
+        doc.rect(startWidth + pdfConfig.margin.left, currentHeight.value, currentTdWidth, lineHeight);
       }
     }
   };
@@ -202,18 +118,18 @@ function jsPDFInvoiceTemplate(props: InvoiceProps) {
       addTableHeaderBorder();
     }
 
-    currentHeight += pdfConfig.subLineHeight;
+    addHeight(currentHeight, pdfConfig.subLineHeight);
     doc.setTextColor(pdfConfig.headerFontColor);
     doc.setFontSize(pdfConfig.fieldTextSize);
     doc.setDrawColor(pdfConfig.textFontColor);
 
-    currentHeight += 2;
+    currentHeight.value += 2;
 
     let startWidth = 0;
 
     props.invoice?.header?.forEach((row, index) => {
       if (index == 0) {
-        doc.text(row.text, pdfConfig.margin.left, currentHeight);
+        doc.text(row.text, pdfConfig.margin.left, currentHeight.value);
       }
       else {
         const currentTdWidth = row?.style?.width || tdWidth;
@@ -223,11 +139,11 @@ function jsPDFInvoiceTemplate(props: InvoiceProps) {
         const previousTdWidth = props.invoice?.header[index - 1]?.style?.width || tdWidth;
         const widthToUse = currentTdWidth == previousTdWidth ? currentTdWidth : previousTdWidth;
         startWidth += widthToUse;
-        doc.text(row.text, startWidth + pdfConfig.margin.left, currentHeight);
+        doc.text(row.text, startWidth + pdfConfig.margin.left, currentHeight.value);
       }
     });
 
-    currentHeight += pdfConfig.subLineHeight - 1;
+    addHeight(currentHeight, pdfConfig.subLineHeight) - 1;
     doc.setTextColor(pdfConfig.textFontColor);
   };
   //#endregion
@@ -237,7 +153,7 @@ function jsPDFInvoiceTemplate(props: InvoiceProps) {
   //#region TABLE BODY
   const tableBodyLength = props.invoice.table.length;
   props.invoice.table.forEach((row, index) => {
-    doc.line(pdfConfig.margin.left, currentHeight, docWidth - pdfConfig.margin.right, currentHeight);
+    doc.line(pdfConfig.margin.left, currentHeight.value, docWidth - pdfConfig.margin.right, currentHeight.value);
 
     const getRowsHeight = () => {
       let rowsHeight: number[] = [];
@@ -272,44 +188,44 @@ function jsPDFInvoiceTemplate(props: InvoiceProps) {
       let item = splitTextAndGetHeight(doc, entry.text, widthToUse - 1);
 
       if (index == 0) {
-        doc.text(item.text, pdfConfig.margin.left + 1, currentHeight + 4);
+        doc.text(item.text, pdfConfig.margin.left + 1, currentHeight.value + 4);
       } else {
         const currentTdWidth = entry.style?.width || tdWidth;
         const previousTdWidth = props.invoice?.header[index - 1]?.style?.width || tdWidth;
         const widthToUse = currentTdWidth == previousTdWidth ? currentTdWidth : previousTdWidth;
         startWidth += widthToUse;
-        doc.text(item.text, pdfConfig.margin.left + 1 + startWidth, currentHeight + 4);
+        doc.text(item.text, pdfConfig.margin.left + 1 + startWidth, currentHeight.value + 4);
       }
     });
 
-    currentHeight += maxHeight - 4;
+    currentHeight.value += maxHeight - 4;
 
     //td border height
-    currentHeight += 5;
+    currentHeight.value += 5;
 
-    //pre-increase currentHeight to check the height based on next row
-    if (index + 1 < tableBodyLength) currentHeight += maxHeight;
+    //pre-increase currentHeight.value to check the height based on next row
+    if (index + 1 < tableBodyLength) currentHeight.value += maxHeight;
 
     if (
       props.orientation &&
-      (currentHeight > 185 ||
-        (currentHeight > 178 && doc.getNumberOfPages() > 1))
+      (currentHeight.value > 185 ||
+        (currentHeight.value > 178 && doc.getNumberOfPages() > 1))
     ) {
       doc.addPage();
-      currentHeight = 10;
+      currentHeight.value = 10;
       if (index + 1 < tableBodyLength) addTableHeader();
     }
 
-    if (!props.orientation && (currentHeight > 265 || (currentHeight > 255 && doc.getNumberOfPages() > 1))) {
+    if (!props.orientation && (currentHeight.value > 265 || (currentHeight.value > 255 && doc.getNumberOfPages() > 1))) {
       doc.addPage();
-      currentHeight = 10;
+      currentHeight.value = 10;
       if (index + 1 < tableBodyLength) {
         addTableHeader();
       }
     }
 
-    if (index + 1 < tableBodyLength && currentHeight > 30) {
-      currentHeight -= maxHeight;
+    if (index + 1 < tableBodyLength && currentHeight.value > 30) {
+      currentHeight.value -= maxHeight;
     }
   });
   //#endregion
@@ -321,16 +237,16 @@ function jsPDFInvoiceTemplate(props: InvoiceProps) {
 
   //#region PAGE BREAKER
   const checkAndAddPageLandscape = () => {
-    if (props.orientation === "landscape" && currentHeight + invDescSize > 270) {
+    if (props.orientation === "landscape" && currentHeight.value + invDescSize > 270) {
       doc.addPage();
-      currentHeight = 10;
+      currentHeight.value = 10;
     }
   }
 
   const checkAndAddPagePortrait = (heightLimit = 173) => {
-    if (props.orientation === "portrait" && currentHeight + invDescSize > heightLimit) {
+    if (props.orientation === "portrait" && currentHeight.value + invDescSize > heightLimit) {
       doc.addPage();
-      currentHeight = 10;
+      currentHeight.value = 10;
     }
   }
 
@@ -344,22 +260,22 @@ function jsPDFInvoiceTemplate(props: InvoiceProps) {
 
   doc.setTextColor(pdfConfig.headerFontColor);
   doc.setFontSize(pdfConfig.labelTextSize);
-  currentHeight += pdfConfig.lineHeight;
+  currentHeight.value += pdfConfig.lineHeight;
 
   //#region additionalRows
   if (props.invoice.additionalRows?.length || 0 > 0) {
     //#region Line breaker before invoce total
-    doc.line(docWidth / 2, currentHeight, docWidth - 10, currentHeight);
-    currentHeight += pdfConfig.lineHeight;
+    doc.line(docWidth / 2, currentHeight.value, docWidth - 10, currentHeight.value);
+    currentHeight.value += pdfConfig.lineHeight;
     //#endregion
 
     for (const row of props.invoice.additionalRows || []) {
-      currentHeight += pdfConfig.lineHeight;
+      currentHeight.value += pdfConfig.lineHeight;
       doc.setFontSize(row?.style?.fontSize || pdfConfig.fieldTextSize);
 
-      doc.text(row.col1 || "", docWidth / 1.5, currentHeight, { align: "right" });
-      doc.text(row.col2 || "", docWidth - 25, currentHeight, { align: "right" });
-      doc.text(row.col3 || "", docWidth - 10, currentHeight, { align: "right" });
+      doc.text(row.col1 || "", docWidth / 1.5, currentHeight.value, { align: "right" });
+      doc.text(row.col2 || "", docWidth - 25, currentHeight.value, { align: "right" });
+      doc.text(row.col3 || "", docWidth - 10, currentHeight.value, { align: "right" });
       checkAndAddPage();
     }
     //#endregion
@@ -367,8 +283,8 @@ function jsPDFInvoiceTemplate(props: InvoiceProps) {
     checkAndAddPage();
 
     doc.setTextColor(pdfConfig.headerFontColor);
-    currentHeight += pdfConfig.subLineHeight;
-    currentHeight += pdfConfig.subLineHeight;
+    addHeight(currentHeight, pdfConfig.subLineHeight);
+    addHeight(currentHeight, pdfConfig.subLineHeight);
     doc.setFontSize(pdfConfig.labelTextSize);
 
     //#region Add num of pages at the bottom
@@ -399,20 +315,20 @@ function jsPDFInvoiceTemplate(props: InvoiceProps) {
       doc.setFontSize(pdfConfig.labelTextSize);
       doc.setTextColor(pdfConfig.headerFontColor);
 
-      doc.text(props.invoice?.invDescLabel || "", 10, currentHeight);
-      currentHeight += pdfConfig.subLineHeight;
+      doc.text(props.invoice?.invDescLabel || "", 10, currentHeight.value);
+      addHeight(currentHeight, pdfConfig.subLineHeight);
       doc.setTextColor(pdfConfig.textFontColor);
       doc.setFontSize(pdfConfig.fieldTextSize - 1);
 
       const lines = doc.splitTextToSize(props.invoice?.invDesc || "", docWidth / 2);
       //text in left half
-      doc.text(lines, pdfConfig.margin.left, currentHeight);
-      currentHeight +=
+      doc.text(lines, pdfConfig.margin.left, currentHeight.value);
+      currentHeight.value +=
         doc.getTextDimensions(lines).h > 5
           ? doc.getTextDimensions(lines).h + 6
           : pdfConfig.lineHeight;
 
-      return currentHeight;
+      return currentHeight.value;
     };
     addInvoiceDesc();
     //#endregion
@@ -519,6 +435,7 @@ document.getElementById("test")?.addEventListener("click", () => {
     client: {
       name: "fullName",
       address: "address",
+      label: "hallo label",
       phone: "phone",
       email: "data.email",
     },

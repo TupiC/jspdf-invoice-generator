@@ -1,5 +1,5 @@
 import jsPDF, { TextOptionsLight } from 'jspdf';
-import { InvoiceProps } from './types/invoice.types';
+import { InvoiceProps } from '../types/invoice.types';
 
 export const splitTextAndGetHeight = (doc: jsPDF, text: string, size: number) => {
     const lines = doc.splitTextToSize(text, size);
@@ -36,4 +36,25 @@ export const addText = (doc: jsPDF, text: string | undefined, x: number, y: numb
     if (text) {
         doc.text(text, x, y, options);
     }
+}
+
+export const addImage = (doc: jsPDF, image: HTMLImageElement, x: number, y: number, w: number, h: number, type?: string) => {
+    if (type) {
+        doc.addImage(image, type, x, y, w, h);
+    } else {
+        doc.addImage(image, x, y, w, h);
+    }
+}
+
+export const addHeight = (currentHeight: { value: number }, height: number) => {
+    currentHeight.value += height;
+    return currentHeight.value;
+}
+
+export const setFontColor = (doc: jsPDF, color: string) => {
+    doc.setTextColor(color);
+}
+
+export const setFontSize = (doc: jsPDF, size: number) => {
+    doc.setFontSize(size);
 }
