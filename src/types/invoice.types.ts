@@ -1,13 +1,6 @@
 import jsPDF from 'jspdf';
 
-export type OutputType = {
-    Save: "save"
-    DataUriString: "datauristring"
-    DataUri: "datauri"
-    DataUrlNewWindow: "dataurlnewwindow"
-    Blob: "blob"
-    ArrayBuffer: "arraybuffer"
-}
+export type OutputType = "arraybuffer" | "blob" | "bloburi" | "bloburl" | "datauristring" | "dataurlstring" | "pdfobjectnewwindow" | "pdfjsnewwindow" | "dataurlnewwindow" | "dataurl" | "datauri" | "save"
 
 export type ReturnObj = {
     pagesNumber: number
@@ -18,49 +11,52 @@ export type ReturnObj = {
 }
 
 export type PdfConfig = {
-    headerTextSize: number
-    labelTextSize: number
-    fieldTextSize: number
-    lineHeight: number
-    subLineHeight: number
-    headerFontColor: string
-    textFontColor: string
+    headerTextSize?: number
+    labelTextSize?: number
+    fieldTextSize?: number
+    lineHeight?: number
+    subLineHeight?: number
+    headerFontColor?: string
+    textFontColor?: string
+    startingAt?: number
+    margin?: Margin
+    spacing?: {
+        beforeTable?: number
+        afterBusinessInfo?: number
+    }
 }
 
 export type InvoiceProps = {
-    outputType: OutputType | string
+    outputType: OutputType;
+    fileName: string
     onJsPDFDocCreation?: (doc: jsPDF) => void
     returnJsPDFDocObject?: boolean
-    fileName: string
-    orientationLandscape?: boolean
+    pdfConfig?: PdfConfig
+    orientation?: "landscape" | "portrait"
     compress?: boolean
-    pdfConfig: PdfConfig
-    logo: Logo
-    stamp: Partial<Logo> & {
+    logo?: Logo
+    stamp?: Logo & {
         inAllPages?: boolean
     }
-    business: PersonInfo & {
-        email_1: string
-        website: string
+    business?: PersonInfo & {
+        email_1?: string
+        website?: string
     }
-    contact: PersonInfo & {
+    client?: PersonInfo & {
         label?: string
         otherInfo?: string
     }
-    invoice: {
+    invoice?: {
         label?: string
         num?: number
-        invDate: string
+        invDate?: string
         invGenDate?: string
+        borderAfterHeader?: boolean
         headerBorder?: boolean
         tableBodyBorder?: boolean
-        header:
-        {
-            title: string
-            style?: Style
-        }[]
-        table?: any
-        invDescLabel: string
+        header?: TableRow
+        table?: TableRow[]
+        invDescLabel?: string
         invDesc?: string
         additionalRows?: {
             col1?: string
@@ -69,8 +65,8 @@ export type InvoiceProps = {
             style?: Style
         }[]
     }
-    footer: {
-        text: string
+    footer?: {
+        text?: string
     }
     pageEnable?: boolean
     pageLabel?: string
@@ -81,21 +77,32 @@ type Style = Partial<{
     height?: number
     fontSize?: number
     align?: 'left' | 'center' | 'right'
-    margin?: {
-        top?: number
-        left?: number
-    }
+    margin?: Partial<Margin>
 }>
 
+type Margin = {
+    top?: number
+    right?: number
+    bottom?: number
+    left?: number
+}
+
 type Logo = {
-    src: string
+    src?: string
     type?: string
     style?: Style
 }
 
 type PersonInfo = {
-    name: string
-    address: string
-    phone: string
-    email: string
+    name?: string
+    address?: string
+    phone?: string
+    email?: string
+}
+
+type TableRow = TableEntry[]
+
+type TableEntry = {
+    text: string;
+    style?: Partial<Style>;
 }
