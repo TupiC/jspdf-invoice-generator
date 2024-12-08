@@ -9,9 +9,6 @@ export const getColumnAmount = (props: InvoiceProps) => {
 export const addTableHeader = (doc: jsPDF, props: InvoiceProps, pdfConfig: Required<PdfConfig>, currentHeight: CurrentHeight, defaultColumnWidth: number) => {
     const marginLeft = pdfConfig.margin.left || 10;
     const marginRight = pdfConfig.margin.right || 10;
-    console.log("🚀 ~ addTableHeader ~ marginRight:", marginRight)
-
-
 
     if (props.invoice?.headerBorder) {
         addTableHeaderBorder(doc, marginLeft, marginRight, currentHeight, props, defaultColumnWidth);
@@ -28,7 +25,7 @@ export const addTableHeader = (doc: jsPDF, props: InvoiceProps, pdfConfig: Requi
 
     props.invoice?.header?.forEach((row, index) => {
         if (index === 0) {
-            addText(doc, row.text, marginLeft + 1, currentHeight.value)
+            addText(doc, row.text, startWidth + marginLeft + 1, currentHeight.value)
         } else {
             const currentTdWidth = row?.style?.width || defaultColumnWidth;
             if (!props.invoice?.header) {
@@ -41,7 +38,7 @@ export const addTableHeader = (doc: jsPDF, props: InvoiceProps, pdfConfig: Requi
         }
     });
 
-    addHeight(currentHeight, pdfConfig.subLineHeight);
+    addHeight(currentHeight, 2);
     setFontColor(doc, pdfConfig.textFontColor);
 };
 

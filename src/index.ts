@@ -48,8 +48,10 @@ function jsPDFInvoiceTemplate(props: InvoiceProps) {
   let defaultColumnWidth = (docWidth - (pdfConfig.margin.left + pdfConfig.margin.right)) / columnAmount;
   defaultColumnWidth = (docWidth - 20 - customWidthOfAllColumns) / (props.invoice.header.length - customColumnWidth.length);
 
+  console.log("adding table header")
   addTableHeader(doc, props, pdfConfig, currentHeight, defaultColumnWidth);
 
+  console.log("adding table body")
   addTableBody(doc, props, currentHeight, docWidth, pdfConfig, defaultColumnWidth);
 
   const invDescSize = splitTextAndGetHeight(doc,
@@ -169,42 +171,42 @@ document.getElementById("test")?.addEventListener("click", () => {
       }
     },
     logo: {
-      src: "https://res.cloudinary.com/dmowrqef3/image/upload/v1733485063/logo_light_512_6baddaae81.png",
+      src: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTSVLG1Y6rHkzILk_pauYmH48HjcNC7c94Frg&s",
       type: 'PNG',
       style: {
-        width: 42,
-        height: 42,
+        width: 32,
+        height: 32,
         margin: {
-          top: -8,
-          left: -8,
-        }
+          top: -5,
+        },
       },
     },
     stamp: {
       inAllPages: false,
     },
     business: {
-      name: "Test",
-      address: "8962 Gröbming, Wiesackstraße 1020",
-      phone: "+43 660 85 70 879",
-      email: "office@test.at",
-      email_1: "",
-      website: "www.test.at",
+      name: "Your Company",
+      address: "Your Address",
+      phone: "+31 323 83 83 29",
+      email: "your@company.com",
+      email_1: "your2@companry.com",
+      website: "www.company.at",
     },
     client: {
-      name: "fullName",
-      address: "address",
-      label: "hallo label",
-      phone: "phone",
-      email: "data.email",
+      name: "Client Name",
+      address: "Client Address",
+      label: "Invoice to:",
+      phone: "+31 323 83 83 29",
+      otherInfo: "Other info",
+      email: "client@email.com",
     },
     pageDelimiter: "/",
     invoice: {
-      label: "Rechnung #: ",
+      label: "Invoice #: ",
       num: 1,
-      invDate: `Rechnungsdatum:`,
-      headerBorder: true,
-      tableBodyBorder: true,
+      invDate: `Invoice date:`,
+      headerBorder: false,
+      tableBodyBorder: false,
       header:
         [
           {
@@ -214,98 +216,66 @@ document.getElementById("test")?.addEventListener("click", () => {
             }
           },
           {
-            text: "Produkt",
+            text: "Product",
             style: {
               width: 40,
             }
           },
-          {
-            text: "Preis",
-            style: {
-              align: 'right',
-            }
-          },
-          { text: "Menge" },
-          { text: "Einheit" },
-          { text: "Gesamt" }
+          { text: "Price" },
+          { text: "Quantity" },
+          { text: "Unit" },
+          { text: "Total" }
         ],
       table: [[
         { text: "1" },
-        {
-          text: `Produkt 1`,
-          style: {
-            align: 'left',
-          }
-        },
-        {
-          text: `10`,
-          style: {
-            align: 'right',
-          }
-        },
-        { text: `1` },
-        { text: `Stk` },
-        {
-          text: `10`,
-          style: {
-            align: 'right',
-          }
-        }
-      ], [
+        { text: "Product 1", },
+        { text: "10", },
+        { text: "3" },
+        { text: "Pcs" },
+        { text: "30", }
+      ],
+      [
         { text: "1" },
-        {
-          text: `Produkt 1`,
-          style: {
-            align: 'left',
-          }
-        },
-        {
-          text: `10`,
-          style: {
-            align: 'right',
-          }
-        },
-        { text: `1` },
-        { text: `Stk` },
-        {
-          text: `10`,
-          style: {
-            align: 'right',
-          }
-        }
+        { text: "Product 2", },
+        { text: "5", },
+        { text: "3" },
+        { text: "Pcs" },
+        { text: "15", }
       ]],
       additionalRows: [
         {
-          col1: 'Zwischensumme:',
-          col2: "100",
+          col1: "Subtotal:",
+          col2: "45",
+          col3: "$",
           style: {
-            fontSize: 10 //optional, default 12
+            fontSize: 10
           }
         },
         {
-          col1: 'Versandkosten:',
-          col2: `+20`,
-          col3: "€",
+          col1: '+20% Vat:',
+          col2: "20",
+          col3: "$",
           style: {
-            fontSize: 10 //optional, default 12
+            fontSize: 10
           }
         },
         {
-          col1: 'Gesamtkosten:',
-          col2: "40",
+          col1: 'Total:',
+          col2: "65",
+          col3: "$",
           style: {
-            fontSize: 12 //optional, default 12
+            fontSize: 12
           }
         },
       ],
-      invDesc: "Hinweis: Umsatzsteuerbefreit gemäß § 6 Abs. 1 Z 27 UStG. Bitte überweisen Sie den Betrag innerhalb von 14 Tagen auf das Konto: Test, AT123456789012345678, BIC: ABCDEFKH",
-      invDescLabel: ''
+      invDesc: "This is a description of the invoice. You can add any information here.",
+      invDescLabel: "Invoice Description",
     },
     footer: {
-      text: "Für weitere Informationen kontaktieren Sie uns bitte unter den oben angegebenen Kontaktdaten.",
+      text: "This is a footer text",
     },
     pageEnable: true,
-    pageLabel: "Seite ",
+    pageLabel: "Page",
   })
 });
 export default jsPDFInvoiceTemplate;
