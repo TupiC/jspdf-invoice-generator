@@ -1,13 +1,18 @@
 import { jsPDF, jsPDFOptions } from "jspdf";
-import { InvoiceProps, ReturnObj } from "./types/invoice.types";
-import { addImage, addHeight, addText, getPdfConfig, setFontColor, setFontSize, splitTextAndGetHeight } from './utils/pdf';
+import { CurrentHeight, InvoiceProps, ReturnObj } from "./types/invoice.types";
+import { addHeight, getPdfConfig, handleSave, splitTextAndGetHeight } from './utils/pdf';
 import { addBusinessInfo, addClientAndInvoiceInfo } from './utils/invoice';
+import { addTableHeader, getColumnAmount } from './utils/table/header';
+import { addTableBody } from './utils/table/body';
 
-let currentHeight = { value: 0 };
+let currentHeight: CurrentHeight = { value: 0 };
 
 function jsPDFInvoiceTemplate(props: InvoiceProps) {
   if (!props.invoice?.table || !props.invoice?.header) {
     throw Error("Please provide a table and a header in the invoice object.");
+  }
+  if (props.invoice?.header.length < 2 || props.invoice?.table[0].length < 2) {
+    throw Error("Header and table must contain at least 2 columns.");
   }
   if (props.invoice?.table.length && props.invoice?.table[0].length != props.invoice?.header.length) {
     throw Error("Length of header and table column must be equal.");
@@ -26,22 +31,6 @@ function jsPDFInvoiceTemplate(props: InvoiceProps) {
 
   addHeight(currentHeight, pdfConfig.startingAt);
 
-  setFontSize(doc, pdfConfig.headerTextSize);
-  setFontColor(doc, pdfConfig.headerFontColor);
-  addText(doc, props.business?.name || "", docWidth - pdfConfig.margin.right, currentHeight.value, { align: "right" });
-  setFontSize(doc, pdfConfig.fieldTextSize);
-
-  if (props.logo?.src) {
-    const logo = new Image();
-    logo.src = props.logo.src;
-
-    if (props.logo.type) {
-      addImage(doc, logo, pdfConfig.margin.left + (props.logo.style?.margin?.left || 0), currentHeight.value + (props.logo.style?.margin?.top || 0), props.logo.style?.width || 64, props.logo.style?.height || 64, props.logo.type);
-    } else {
-      addImage(doc, logo, pdfConfig.margin.left + (props.logo.style?.margin?.left || 0), currentHeight.value + (props.logo.style?.margin?.top || 0), props.logo.style?.width || 64, props.logo.style?.height || 64);
-    }
-  }
-
   addBusinessInfo(doc, pdfConfig, currentHeight, docWidth, props);
 
   if (props.invoice.borderAfterHeader) {
@@ -49,186 +38,18 @@ function jsPDFInvoiceTemplate(props: InvoiceProps) {
   }
 
   addClientAndInvoiceInfo(doc, pdfConfig, currentHeight, docWidth, props);
-
   addHeight(currentHeight, pdfConfig.spacing.beforeTable);
 
-  //TABLE PART
+  const columnAmount = getColumnAmount(props);
 
-  const columnAmount = props.invoice?.header.length || 1;
+  const customColumnWidth = props.invoice.header.map(x => x?.style?.width || 0).filter(x => x > 0);
+  const customWidthOfAllColumns = customColumnWidth.reduce((a, b) => a + b, 0);
+  let defaultColumnWidth = (docWidth - (pdfConfig.margin.left + pdfConfig.margin.right)) / columnAmount;
+  defaultColumnWidth = (docWidth - 20 - customWidthOfAllColumns) / (props.invoice.header.length - customColumnWidth.length);
 
-  let tdWidth = (docWidth - (pdfConfig.margin.left + pdfConfig.margin.right)) / columnAmount;
+  addTableHeader(doc, props, pdfConfig, currentHeight, defaultColumnWidth);
 
-  //#region TD WIDTH
-  if (columnAmount > 2) { //add style for 2 or more columns
-    const customColumnNo = props.invoice.header.map(x => x?.style?.width || 0).filter(x => x > 0);
-    let customWidthOfAllColumns = customColumnNo.reduce((a, b) => a + b, 0);
-    tdWidth = (docWidth - 20 - customWidthOfAllColumns) / (props.invoice.header.length - customColumnNo.length);
-  }
-  //#endregion
-
-  //#region TABLE HEADER BORDER
-  const addTableHeaderBorder = () => {
-    currentHeight.value += 2;
-    const lineHeight = 7;
-    let startWidth = 0;
-
-    if (!props.invoice?.header) {
-      return;
-    }
-    for (let i = 0; i < props.invoice.header?.length; i++) {
-      const currentTdWidth = props.invoice.header[i]?.style?.width || tdWidth;
-      if (i === 0) {
-        doc.rect(pdfConfig.margin.left, currentHeight.value, currentTdWidth, lineHeight);
-      } else {
-        const previousTdWidth = props.invoice.header[i - 1]?.style?.width || tdWidth;
-        const widthToUse = currentTdWidth == previousTdWidth ? currentTdWidth : previousTdWidth;
-        startWidth += widthToUse;
-        doc.rect(startWidth + pdfConfig.margin.left, currentHeight.value, currentTdWidth, lineHeight);
-      }
-    }
-    currentHeight.value -= 2;
-  };
-  //#endregion
-
-  //#region TABLE BODY BORDER
-  const addTableBodyBorder = (lineHeight: number) => {
-    let startWidth = 0;
-
-    if (!props.invoice?.header) {
-      return;
-    }
-
-    for (let i = 0; i < props.invoice.header.length; i++) {
-      const currentTdWidth = props.invoice.header[i].style?.width || tdWidth;
-      if (i === 0) {
-        doc.rect(pdfConfig.margin.left, currentHeight.value, currentTdWidth, lineHeight);
-      } else {
-        const previousTdWidth = props.invoice.header[i - 1]?.style?.width || tdWidth;
-        const widthToUse = currentTdWidth == previousTdWidth ? currentTdWidth : previousTdWidth;
-        startWidth += widthToUse;
-        doc.rect(startWidth + pdfConfig.margin.left, currentHeight.value, currentTdWidth, lineHeight);
-      }
-    }
-  };
-  //#endregion
-
-  //#region TABLE HEADER
-  const addTableHeader = () => {
-    if (props.invoice?.headerBorder) {
-      addTableHeaderBorder();
-    }
-
-    addHeight(currentHeight, pdfConfig.subLineHeight);
-    doc.setTextColor(pdfConfig.headerFontColor);
-    doc.setFontSize(pdfConfig.fieldTextSize);
-    doc.setDrawColor(pdfConfig.textFontColor);
-
-    currentHeight.value += 2;
-
-    let startWidth = 0;
-
-    props.invoice?.header?.forEach((row, index) => {
-      if (index == 0) {
-        doc.text(row.text, pdfConfig.margin.left, currentHeight.value);
-      }
-      else {
-        const currentTdWidth = row?.style?.width || tdWidth;
-        if (!props.invoice?.header) {
-          return;
-        }
-        const previousTdWidth = props.invoice?.header[index - 1]?.style?.width || tdWidth;
-        const widthToUse = currentTdWidth == previousTdWidth ? currentTdWidth : previousTdWidth;
-        startWidth += widthToUse;
-        doc.text(row.text, startWidth + pdfConfig.margin.left, currentHeight.value);
-      }
-    });
-
-    addHeight(currentHeight, pdfConfig.subLineHeight) - 1;
-    doc.setTextColor(pdfConfig.textFontColor);
-  };
-  //#endregion
-
-  addTableHeader();
-
-  //#region TABLE BODY
-  const tableBodyLength = props.invoice.table.length;
-  props.invoice.table.forEach((row, index) => {
-    doc.line(pdfConfig.margin.left, currentHeight.value, docWidth - pdfConfig.margin.right, currentHeight.value);
-
-    const getRowsHeight = () => {
-      let rowsHeight: number[] = [];
-      row.forEach((entry, index: number) => {
-        if (!props.invoice?.header) {
-          return;
-        }
-
-        const widthToUse = props.invoice?.header[index].style?.width || tdWidth;
-
-        let item = splitTextAndGetHeight(doc, entry.text, widthToUse - 1);
-        rowsHeight.push(item.height + 1);
-      });
-
-      return rowsHeight;
-    };
-
-    const maxHeight = Math.max(...getRowsHeight());
-
-    //body borders
-    if (props.invoice?.tableBodyBorder) {
-      addTableBodyBorder(maxHeight + 1);
-    }
-
-    let startWidth = 0;
-    row.forEach((entry, index) => {
-      if (!props.invoice?.header) {
-        return;
-      }
-      const widthToUse = props.invoice?.header[index].style?.width || tdWidth;
-
-      let item = splitTextAndGetHeight(doc, entry.text, widthToUse - 1);
-
-      if (index == 0) {
-        doc.text(item.text, pdfConfig.margin.left + 1, currentHeight.value + 4);
-      } else {
-        const currentTdWidth = entry.style?.width || tdWidth;
-        const previousTdWidth = props.invoice?.header[index - 1]?.style?.width || tdWidth;
-        const widthToUse = currentTdWidth == previousTdWidth ? currentTdWidth : previousTdWidth;
-        startWidth += widthToUse;
-        doc.text(item.text, pdfConfig.margin.left + 1 + startWidth, currentHeight.value + 4);
-      }
-    });
-
-    currentHeight.value += maxHeight - 4;
-
-    //td border height
-    currentHeight.value += 5;
-
-    //pre-increase currentHeight.value to check the height based on next row
-    if (index + 1 < tableBodyLength) currentHeight.value += maxHeight;
-
-    if (
-      props.orientation &&
-      (currentHeight.value > 185 ||
-        (currentHeight.value > 178 && doc.getNumberOfPages() > 1))
-    ) {
-      doc.addPage();
-      currentHeight.value = 10;
-      if (index + 1 < tableBodyLength) addTableHeader();
-    }
-
-    if (!props.orientation && (currentHeight.value > 265 || (currentHeight.value > 255 && doc.getNumberOfPages() > 1))) {
-      doc.addPage();
-      currentHeight.value = 10;
-      if (index + 1 < tableBodyLength) {
-        addTableHeader();
-      }
-    }
-
-    if (index + 1 < tableBodyLength && currentHeight.value > 30) {
-      currentHeight.value -= maxHeight;
-    }
-  });
-  //#endregion
+  addTableBody(doc, props, currentHeight, docWidth, pdfConfig, defaultColumnWidth);
 
   const invDescSize = splitTextAndGetHeight(doc,
     props.invoice.invDesc || "",
@@ -351,7 +172,6 @@ function jsPDFInvoiceTemplate(props: InvoiceProps) {
 
     let returnObj: Partial<ReturnObj> = {
       pagesNumber: doc.getNumberOfPages(),
-
     };
 
     if (props.returnJsPDFDocObject) {
@@ -361,39 +181,10 @@ function jsPDFInvoiceTemplate(props: InvoiceProps) {
       };
     }
 
-    switch (props.outputType) {
-      case "save":
-        doc.save(props.fileName);
-        break;
-      case "blob":
-        returnObj = {
-          ...returnObj,
-          blob: doc.output("blob"),
-        };
-        break;
-      case "datauristring":
-        returnObj = {
-          ...returnObj,
-          dataUriString: doc.output("datauristring", {
-            filename: props.fileName,
-          }),
-        };
-        break;
-      case "arraybuffer":
-        returnObj = {
-          ...returnObj,
-          arrayBuffer: doc.output("arraybuffer"),
-        };
-        break;
-      default:
-        doc.output("dataurlnewwindow", {
-          filename: props.fileName,
-        });
-    }
-
-    return returnObj;
+    return handleSave(doc, props, returnObj);
   }
 }
+
 document.getElementById("test")?.addEventListener("click", () => {
   jsPDFInvoiceTemplate({
     outputType: "pdfjsnewwindow",

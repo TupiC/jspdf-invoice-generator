@@ -100,9 +100,13 @@ type PersonInfo = {
     email?: string
 }
 
-type TableRow = TableEntry[]
+export type TableRow = TableEntry[]
 
 type TableEntry = {
     text: string;
     style?: Partial<Style>;
+}
+
+export type CurrentHeight = {
+    value: number;
 }

@@ -1,5 +1,5 @@
 import jsPDF, { TextOptionsLight } from 'jspdf';
-import { InvoiceProps } from '../types/invoice.types';
+import { CurrentHeight, InvoiceProps, ReturnObj } from '../types/invoice.types';
 
 export const splitTextAndGetHeight = (doc: jsPDF, text: string, size: number) => {
     const lines = doc.splitTextToSize(text, size);
@@ -46,7 +46,7 @@ export const addImage = (doc: jsPDF, image: HTMLImageElement, x: number, y: numb
     }
 }
 
-export const addHeight = (currentHeight: { value: number }, height: number) => {
+export const addHeight = (currentHeight: CurrentHeight, height: number) => {
     currentHeight.value += height;
     return currentHeight.value;
 }
@@ -57,4 +57,38 @@ export const setFontColor = (doc: jsPDF, color: string) => {
 
 export const setFontSize = (doc: jsPDF, size: number) => {
     doc.setFontSize(size);
+}
+
+export const handleSave = (doc: jsPDF, props: InvoiceProps, returnObj: Partial<ReturnObj>) => {
+    switch (props.outputType) {
+        case "save":
+            doc.save(props.fileName);
+            break;
+        case "blob":
+            returnObj = {
+                ...returnObj,
+                blob: doc.output("blob"),
+            };
+            break;
+        case "datauristring":
+            returnObj = {
+                ...returnObj,
+                dataUriString: doc.output("datauristring", {
+                    filename: props.fileName,
+                }),
+            };
+            break;
+        case "arraybuffer":
+            returnObj = {
+                ...returnObj,
+                arrayBuffer: doc.output("arraybuffer"),
+            };
+            break;
+        default:
+            doc.output("dataurlnewwindow", {
+                filename: props.fileName,
+            });
+    }
+
+    return returnObj;
 }

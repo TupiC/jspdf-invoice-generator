@@ -1,8 +1,24 @@
 import jsPDF from 'jspdf';
-import { addHeight, addText, setFontColor, setFontSize } from './pdf';
-import { InvoiceProps, PdfConfig } from '../types/invoice.types';
+import { addHeight, addImage, addText, setFontColor, setFontSize } from './pdf';
+import { CurrentHeight, InvoiceProps, PdfConfig } from '../types/invoice.types';
 
-export const addBusinessInfo = (doc: jsPDF, pdfConfig: Required<PdfConfig>, currentHeight: { value: number }, docWidth: number, props: InvoiceProps) => {
+export const addBusinessInfo = (doc: jsPDF, pdfConfig: Required<PdfConfig>, currentHeight: CurrentHeight, docWidth: number, props: InvoiceProps) => {
+    setFontSize(doc, pdfConfig.headerTextSize);
+    setFontColor(doc, pdfConfig.headerFontColor);
+    addText(doc, props.business?.name || "", docWidth - (pdfConfig.margin.right || 10), currentHeight.value, { align: "right" });
+    setFontSize(doc, pdfConfig.fieldTextSize);
+
+    if (props.logo?.src) {
+        const logo = new Image();
+        logo.src = props.logo.src;
+
+        if (props.logo.type) {
+            addImage(doc, logo, (pdfConfig.margin.left || 10) + (props.logo.style?.margin?.left || 0), currentHeight.value + (props.logo.style?.margin?.top || 0), props.logo.style?.width || 64, props.logo.style?.height || 64, props.logo.type);
+        } else {
+            addImage(doc, logo, (pdfConfig.margin.left || 10) + (props.logo.style?.margin?.left || 0), currentHeight.value + (props.logo.style?.margin?.top || 0), props.logo.style?.width || 64, props.logo.style?.height || 64);
+        }
+    }
+
     setFontColor(doc, pdfConfig.textFontColor);
     addHeight(currentHeight, pdfConfig.subLineHeight * 2);
     addText(doc, props.business?.address || "", docWidth - (pdfConfig.margin.right || 10), currentHeight.value, { align: "right" });
@@ -24,7 +40,7 @@ export const addBusinessInfo = (doc: jsPDF, pdfConfig: Required<PdfConfig>, curr
 }
 
 
-export const addClientAndInvoiceInfo = (doc: jsPDF, pdfConfig: Required<PdfConfig>, currentHeight: { value: number }, docWidth: number, props: InvoiceProps) => {
+export const addClientAndInvoiceInfo = (doc: jsPDF, pdfConfig: Required<PdfConfig>, currentHeight: CurrentHeight, docWidth: number, props: InvoiceProps) => {
     setFontColor(doc, pdfConfig.textFontColor);
     setFontSize(doc, pdfConfig.fieldTextSize);
     addHeight(currentHeight, pdfConfig.lineHeight);
