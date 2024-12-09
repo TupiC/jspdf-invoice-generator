@@ -1,12 +1,12 @@
 import { jsPDF, jsPDFOptions } from "jspdf";
 import { CurrentHeight, InvoiceProps, ReturnObj } from "./types/invoice.types";
-import { addHeight, addText, getPdfConfig, handleSave, setFontColor, setFontSize, splitTextAndGetHeight } from './utils/pdf';
+import { addHeight, addImage, addText, getPdfConfig, handleSave, setFontColor, setFontSize, splitTextAndGetHeight } from './utils/pdf';
 import { addBusinessInfo, addClientAndInvoiceInfo, addInvoiceDesc } from './utils/invoice';
 import { addTableHeader, getColumnAmount } from './utils/table/header';
 import { addTableBody } from './utils/table/body';
 
 
-function jsPDFInvoiceTemplate(props: InvoiceProps) {
+const generateInvoice = (props: InvoiceProps) => {
   if (!props.invoice?.table || !props.invoice?.header) {
     throw Error("Please provide a table and a header in the invoice object.");
   }
@@ -124,9 +124,19 @@ function jsPDFInvoiceTemplate(props: InvoiceProps) {
 
     addInvoiceDesc(doc, pdfConfig, props, currentHeight, docWidth)
 
-    // addStamp(); //TODO
+    if (props.stamp?.src) {
+      const stamp = new Image();
+      stamp.src = props.stamp.src;
+      const stampWidth = props.stamp.style?.width || 64;
+      const stampHeight = props.stamp.style?.height || 64;
 
-    //#region Add num of first page at the bottom
+      if (props.stamp.type) {
+        addImage(doc, stamp, pdfConfig.margin.left + (props.stamp.style?.margin?.left || 0), docHeight - pdfConfig.margin.bottom - stampHeight + (props.stamp.style?.margin?.top || 0), stampWidth, stampHeight, props.stamp.type);
+      } else {
+        addImage(doc, stamp, pdfConfig.margin.left + (props.stamp.style?.margin?.left || 0), docHeight - pdfConfig.margin.bottom - stampHeight + (props.stamp.style?.margin?.top || 0), stampWidth, stampHeight);
+      }
+    }
+
     if (doc.getNumberOfPages() === 1 && props.pageEnable) {
       setFontSize(doc, pdfConfig.fieldTextSize - 2);
       setFontColor(doc, pdfConfig.textFontColor);
@@ -138,7 +148,6 @@ function jsPDFInvoiceTemplate(props: InvoiceProps) {
         { align: "right" }
       )
     }
-    //#endregion
 
     let returnObj: Partial<ReturnObj> = {
       pagesNumber: doc.getNumberOfPages(),
@@ -156,7 +165,7 @@ function jsPDFInvoiceTemplate(props: InvoiceProps) {
 }
 
 document.getElementById("test")?.addEventListener("click", () => {
-  jsPDFInvoiceTemplate({
+  generateInvoice({
     outputType: "pdfjsnewwindow",
     onJsPDFDocCreation: (doc) => {
       console.log(doc);
@@ -167,7 +176,6 @@ document.getElementById("test")?.addEventListener("click", () => {
       compress: true,
       orientation: "portrait",
       margin: {
-        right: 20,
       }
     },
     logo: {
@@ -177,11 +185,16 @@ document.getElementById("test")?.addEventListener("click", () => {
         width: 32,
         height: 32,
         margin: {
-          top: -5,
+          top: -5
         },
       },
     },
     stamp: {
+      src: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/QR_deWP.svg/1200px-QR_deWP.svg.png",
+      style: {
+        width: 16,
+        height: 16,
+      },
       inAllPages: false,
     },
     business: {
@@ -203,8 +216,9 @@ document.getElementById("test")?.addEventListener("click", () => {
     pageDelimiter: "/",
     invoice: {
       label: "Invoice #: ",
+      invGenDate: `Invoice generated date: ${new Date().toLocaleDateString()}`,
       num: 1,
-      invDate: `Invoice date:`,
+      invDate: `Invoice date: ${new Date().toLocaleDateString()}`,
       headerBorder: false,
       tableBodyBorder: false,
       header:
@@ -278,4 +292,5 @@ document.getElementById("test")?.addEventListener("click", () => {
     pageLabel: "Page",
   })
 });
-export default jsPDFInvoiceTemplate;
+
+export default { generateInvoice, jsPDF };

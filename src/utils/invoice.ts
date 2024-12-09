@@ -42,25 +42,27 @@ export const addBusinessInfo = (doc: jsPDF, pdfConfig: Required<PdfConfig>, curr
     addHeight(currentHeight, pdfConfig.subLineHeight);
 }
 
-
 export const addClientAndInvoiceInfo = (doc: jsPDF, pdfConfig: Required<PdfConfig>, currentHeight: CurrentHeight, docWidth: number, props: InvoiceProps) => {
+    const marginLeft = pdfConfig.margin.left || 10;
+    const marginRight = pdfConfig.margin.right || 10;
+
     setFontColor(doc, pdfConfig.textFontColor);
     setFontSize(doc, pdfConfig.fieldTextSize);
     addHeight(currentHeight, pdfConfig.lineHeight);
 
 
-    addText(doc, props.client?.label, (pdfConfig.margin.left || 10), currentHeight.value)
+    addText(doc, props.client?.label, marginLeft, currentHeight.value)
     if (props.client?.label) {
         currentHeight.value += pdfConfig.lineHeight;
     }
 
     setFontColor(doc, pdfConfig.headerFontColor);
     setFontSize(doc, pdfConfig.headerTextSize - 5);
-    addText(doc, props.client?.name, (pdfConfig.margin.left || 10), currentHeight.value)
+    addText(doc, props.client?.name, marginLeft, currentHeight.value)
 
     if (props.invoice?.label && props.invoice?.num) {
         addText(doc, props.invoice?.label + props.invoice?.num,
-            docWidth - (pdfConfig.margin.right || 10),
+            docWidth - marginRight,
             currentHeight.value,
             { align: "right" }
         )
@@ -72,24 +74,23 @@ export const addClientAndInvoiceInfo = (doc: jsPDF, pdfConfig: Required<PdfConfi
 
 
     if (props.client?.address || props.invoice?.invDate) {
-        addText(doc, props.client?.address, (pdfConfig.margin.left || 10), currentHeight.value)
-        addText(doc, props.invoice?.invDate, docWidth - (pdfConfig.margin.right || 10), currentHeight.value, { align: "right" })
+        addText(doc, props.client?.address, marginLeft, currentHeight.value)
+        addText(doc, props.invoice?.invDate, docWidth - marginRight, currentHeight.value, { align: "right" })
         addHeight(currentHeight, pdfConfig.subLineHeight);
     }
 
     if (props.client?.phone || props.invoice?.invGenDate) {
-        addText(doc, props.client?.phone, (pdfConfig.margin.left || 10), currentHeight.value)
-        addText(doc, props.invoice?.invGenDate, docWidth - (pdfConfig.margin.right || 10), currentHeight.value, { align: "right" })
-        addHeight(currentHeight, pdfConfig.subLineHeight);
+        addText(doc, props.client?.phone, marginLeft, currentHeight.value)
+        addText(doc, props.invoice?.invGenDate, docWidth - marginRight, currentHeight.value, { align: "right" })
         addHeight(currentHeight, pdfConfig.subLineHeight);
     }
 
     if (props.client?.email) {
-        addText(doc, props.client.email, (pdfConfig.margin.left || 10), currentHeight.value)
+        addText(doc, props.client.email, marginLeft, currentHeight.value)
         addHeight(currentHeight, pdfConfig.subLineHeight);
     }
 
-    addText(doc, props.client?.otherInfo, (pdfConfig.margin.left || 10), currentHeight.value)
+    addText(doc, props.client?.otherInfo, marginLeft, currentHeight.value)
     if (!props.client?.otherInfo) {
         currentHeight.value -= pdfConfig.subLineHeight
     }

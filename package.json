@@ -24,7 +24,7 @@
     "js-pdf-template",
     "ts-pdf-template"
   ],
-  "author": "Christoph Tupi <christoph.tupi@@gmail.com>",
+  "author": "Christoph Tupi <christoph.tupi@gmail.com>",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/TupiC/jspdf-invoice-template/issues"
