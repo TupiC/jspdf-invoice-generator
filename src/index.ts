@@ -1,9 +1,10 @@
 import { jsPDF, jsPDFOptions } from "jspdf";
 import { CurrentHeight, InvoiceProps, ReturnObj } from "./types/invoice.types";
-import { addHeight, addImage, addText, getPdfConfig, handleSave, setFontColor, setFontSize, splitTextAndGetHeight } from './utils/pdf';
-import { addBusinessInfo, addClientAndInvoiceInfo, addInvoiceDesc } from './utils/invoice';
+import { addHeight, addText, getPdfConfig, handleSave, setFontColor, setFontSize, splitTextAndGetHeight } from './utils/pdf';
+import { addBusinessInfo, addClientAndInvoiceInfo, addInvoiceDesc, addStamp } from './utils/invoice';
 import { addTableHeader, getColumnAmount } from './utils/table/header';
 import { addTableBody } from './utils/table/body';
+import { getTableData } from './utils/table/data';
 
 
 const generateInvoice = (props: InvoiceProps) => {
@@ -26,7 +27,6 @@ const generateInvoice = (props: InvoiceProps) => {
 
   const doc = new jsPDF(options);
   props.onJsPDFDocCreation && props.onJsPDFDocCreation(doc);
-  console.log(doc.getPageInfo(1))
   const docWidth = doc.internal.pageSize.width;
   const docHeight = doc.internal.pageSize.height;
   const pdfConfig = getPdfConfig(props);
@@ -37,7 +37,7 @@ const generateInvoice = (props: InvoiceProps) => {
   if (props.invoice.borderAfterHeader) {
     doc.line(pdfConfig.margin.left, currentHeight.value, docWidth - pdfConfig.margin.right, currentHeight.value);
   }
-
+  addHeight(currentHeight, pdfConfig.spacing.afterBusinessInfo);
   addClientAndInvoiceInfo(doc, pdfConfig, currentHeight, docWidth, props);
   addHeight(currentHeight, pdfConfig.spacing.beforeTable);
 
@@ -48,37 +48,14 @@ const generateInvoice = (props: InvoiceProps) => {
   let defaultColumnWidth = (docWidth - (pdfConfig.margin.left + pdfConfig.margin.right)) / columnAmount;
   defaultColumnWidth = (docWidth - 20 - customWidthOfAllColumns) / (props.invoice.header.length - customColumnWidth.length);
 
-  console.log("adding table header")
   addTableHeader(doc, props, pdfConfig, currentHeight, defaultColumnWidth);
 
-  console.log("adding table body")
   addTableBody(doc, props, currentHeight, docWidth, pdfConfig, defaultColumnWidth);
 
   const invDescSize = splitTextAndGetHeight(doc,
     props.invoice.invDesc || "",
     docWidth / 2
   ).height;
-
-  const checkAndAddPageLandscape = () => {
-    if (pdfConfig.orientation === "landscape" && currentHeight.value + invDescSize > 270) {
-      doc.addPage();
-      currentHeight.value = 10;
-    }
-  }
-
-  const checkAndAddPagePortrait = (heightLimit = 173) => {
-    if (pdfConfig.orientation === "portrait" && currentHeight.value + invDescSize > heightLimit) {
-      doc.addPage();
-      currentHeight.value = 10;
-    }
-  }
-
-  const checkAndAddPage = () => {
-    checkAndAddPagePortrait();
-    checkAndAddPageLandscape();
-  }
-
-  checkAndAddPage();
 
   setFontColor(doc, pdfConfig.headerFontColor);
   setFontSize(doc, pdfConfig.labelTextSize);
@@ -95,47 +72,32 @@ const generateInvoice = (props: InvoiceProps) => {
       addText(doc, row.col1 || "", docWidth / 1.5, currentHeight.value, { align: "right" })
       addText(doc, row.col2 || "", docWidth - 5 - pdfConfig.margin.right, currentHeight.value, { align: "right" })
       addText(doc, row.col3 || "", docWidth - pdfConfig.margin.right, currentHeight.value, { align: "right" })
-      checkAndAddPage();
     }
-
-    checkAndAddPage();
 
     setFontColor(doc, pdfConfig.headerFontColor)
     addHeight(currentHeight, pdfConfig.subLineHeight);
     addHeight(currentHeight, pdfConfig.subLineHeight);
     setFontSize(doc, pdfConfig.labelTextSize)
 
-    if (doc.getNumberOfPages() > 1) {
+    if (doc.getNumberOfPages() > 1 && props.pageEnable) {
       for (let i = 0; i < doc.getNumberOfPages(); i++) {
         setFontSize(doc, pdfConfig.fieldTextSize - 2)
         setFontColor(doc, pdfConfig.textFontColor)
 
-        if (props.pageEnable) {
-          addText(doc, props.footer?.text || "", docWidth / 2, docHeight - pdfConfig.margin.bottom, { align: "center", maxWidth: docWidth - pdfConfig.margin.left - pdfConfig.margin.right })
-          doc.setPage(i + 1);
-          addText(doc, `${props.pageLabel} ${i + 1} ${props.pageDelimiter || '/'} ${doc.getNumberOfPages()}`, docWidth - pdfConfig.margin.right, doc.internal.pageSize.height - 6)
+        if (props.stamp?.inAllPages) {
+          addStamp(doc, props, docHeight, pdfConfig);
         }
-
-        checkAndAddPagePortrait(183);
-        checkAndAddPageLandscape();
+        addText(doc, props.footer?.text || "", docWidth / 2, docHeight - pdfConfig.margin.bottom, { align: "center", maxWidth: docWidth - pdfConfig.margin.left - pdfConfig.margin.right })
+        doc.setPage(i + 1);
+        addText(doc, `${props.pageLabel} ${i + 1} ${props.pageDelimiter || '/'} ${doc.getNumberOfPages()}`, docWidth - pdfConfig.margin.right, doc.internal.pageSize.height - 6, { align: "right" }
+        )
       }
     }
 
 
     addInvoiceDesc(doc, pdfConfig, props, currentHeight, docWidth)
 
-    if (props.stamp?.src) {
-      const stamp = new Image();
-      stamp.src = props.stamp.src;
-      const stampWidth = props.stamp.style?.width || 64;
-      const stampHeight = props.stamp.style?.height || 64;
-
-      if (props.stamp.type) {
-        addImage(doc, stamp, pdfConfig.margin.left + (props.stamp.style?.margin?.left || 0), docHeight - pdfConfig.margin.bottom - stampHeight + (props.stamp.style?.margin?.top || 0), stampWidth, stampHeight, props.stamp.type);
-      } else {
-        addImage(doc, stamp, pdfConfig.margin.left + (props.stamp.style?.margin?.left || 0), docHeight - pdfConfig.margin.bottom - stampHeight + (props.stamp.style?.margin?.top || 0), stampWidth, stampHeight);
-      }
-    }
+    addStamp(doc, props, docHeight, pdfConfig);
 
     if (doc.getNumberOfPages() === 1 && props.pageEnable) {
       setFontSize(doc, pdfConfig.fieldTextSize - 2);
@@ -176,24 +138,28 @@ document.getElementById("test")?.addEventListener("click", () => {
       compress: true,
       orientation: "portrait",
       margin: {
+      },
+      spacing: {
+        afterBusinessInfo: 10,
       }
+
     },
     logo: {
       src: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTSVLG1Y6rHkzILk_pauYmH48HjcNC7c94Frg&s",
       type: 'PNG',
       style: {
-        width: 32,
-        height: 32,
+        width: 16,
+        height: 16,
         margin: {
           top: -5
         },
       },
     },
     stamp: {
-      src: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/QR_deWP.svg/1200px-QR_deWP.svg.png",
+      src: "https://upload.wikimedia.org/wikipedia/commons/2/2f/Rickrolling_QR_code.png",
       style: {
-        width: 16,
-        height: 16,
+        width: 24,
+        height: 24,
       },
       inAllPages: false,
     },
@@ -240,22 +206,7 @@ document.getElementById("test")?.addEventListener("click", () => {
           { text: "Unit" },
           { text: "Total" }
         ],
-      table: [[
-        { text: "1" },
-        { text: "Product 1", },
-        { text: "10", },
-        { text: "3" },
-        { text: "Pcs" },
-        { text: "30", }
-      ],
-      [
-        { text: "1" },
-        { text: "Product 2", },
-        { text: "5", },
-        { text: "3" },
-        { text: "Pcs" },
-        { text: "15", }
-      ]],
+      table: getTableData(),
       additionalRows: [
         {
           col1: "Subtotal:",
@@ -293,4 +244,4 @@ document.getElementById("test")?.addEventListener("click", () => {
   })
 });
 
-export default { generateInvoice, jsPDF };
+export default generateInvoice;

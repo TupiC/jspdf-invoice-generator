@@ -114,3 +114,21 @@ export const addInvoiceDesc = (doc: jsPDF, pdfConfig: Required<PdfConfig>, props
         ? doc.getTextDimensions(lines).h + 6
         : pdfConfig.lineHeight)
 };
+
+export const addStamp = (doc: jsPDF, props: InvoiceProps, docHeight: number, pdfConfig: PdfConfig) => {
+    const marginLeft = pdfConfig.margin?.left || 10;
+    const marginBottom = pdfConfig.margin?.bottom || 10;
+
+    if (props.stamp?.src) {
+        const stamp = new Image();
+        stamp.src = props.stamp.src;
+        const stampWidth = props.stamp.style?.width || 64;
+        const stampHeight = props.stamp.style?.height || 64;
+
+        if (props.stamp.type) {
+            addImage(doc, stamp, marginLeft + (props.stamp.style?.margin?.left || 0), docHeight - marginBottom - stampHeight + (props.stamp.style?.margin?.top || 0), stampWidth, stampHeight, props.stamp.type);
+        } else {
+            addImage(doc, stamp, marginLeft + (props.stamp.style?.margin?.left || 0), docHeight - marginBottom - stampHeight + (props.stamp.style?.margin?.top || 0), stampWidth, stampHeight);
+        }
+    }
+}
