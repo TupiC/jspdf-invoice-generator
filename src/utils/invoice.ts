@@ -1,134 +1,218 @@
-import jsPDF from 'jspdf';
-import { addHeight, addImage, addText, setFontColor, setFontSize } from './pdf';
-import { CurrentHeight, InvoiceProps, PdfConfig } from '../types/invoice.types';
+import jsPDF from "jspdf";
+import { addHeight, addImage, addText, setFontColor, setFontSize } from "./pdf";
+import { InvoiceProps, PdfConfig } from "../types/invoice.types";
+import { TableProps } from "../types/table.types";
 
-export const addBusinessInfo = (doc: jsPDF, pdfConfig: Required<PdfConfig>, currentHeight: CurrentHeight, docWidth: number, props: InvoiceProps) => {
-    const marginRight = pdfConfig.margin.right || 10;
-    const marginLeft = pdfConfig.margin.left || 10;
+export const addBusinessInfo = (
+    props: Omit<TableProps, "defaultColumnWidth">
+) => {
+    const marginRight = props.pdfConfig?.margin.right || 10;
+    const marginLeft = props.pdfConfig?.margin.left || 10;
 
-    setFontSize(doc, pdfConfig.headerTextSize);
-    setFontColor(doc, pdfConfig.headerFontColor);
-    addText(doc, props.business?.name || "", docWidth - marginRight, currentHeight.value, { align: "right" });
-    setFontSize(doc, pdfConfig.fieldTextSize);
+    setFontSize(props.doc, props.pdfConfig.headerTextSize);
+    setFontColor(props.doc, props.pdfConfig.headerFontColor);
+    addText(
+        props.doc,
+        props.invoiceProps.businessName || "",
+        props.docWidth - marginRight,
+        props.currentHeight.value,
+        { align: "right" }
+    );
+    setFontSize(props.doc, props.pdfConfig.fieldTextSize);
 
-    if (props.logo?.src) {
+    if (props.invoiceProps.logo?.src) {
         const logo = new Image();
-        logo.src = props.logo.src;
+        logo.src = props.invoiceProps.logo.src;
 
-        if (props.logo.type) {
-            addImage(doc, logo, marginLeft + (props.logo.style?.margin?.left || 0), currentHeight.value + (props.logo.style?.margin?.top || 0), props.logo.style?.width || 64, props.logo.style?.height || 64, props.logo.type);
+        if (props.invoiceProps.logo.type) {
+            addImage(
+                props.doc,
+                logo,
+                marginLeft + (props.invoiceProps.logo.style?.margin?.left || 0),
+                props.currentHeight.value +
+                    (props.invoiceProps.logo.style?.margin?.top || 0),
+                props.invoiceProps.logo.style?.width || 64,
+                props.invoiceProps.logo.style?.height || 64,
+                props.invoiceProps.logo.type
+            );
         } else {
-            addImage(doc, logo, marginLeft + (props.logo.style?.margin?.left || 0), currentHeight.value + (props.logo.style?.margin?.top || 0), props.logo.style?.width || 64, props.logo.style?.height || 64);
+            addImage(
+                props.doc,
+                logo,
+                marginLeft + (props.invoiceProps.logo.style?.margin?.left || 0),
+                props.currentHeight.value +
+                    (props.invoiceProps.logo.style?.margin?.top || 0),
+                props.invoiceProps.logo.style?.width || 64,
+                props.invoiceProps.logo.style?.height || 64
+            );
         }
     }
 
-    setFontColor(doc, pdfConfig.textFontColor);
-    addHeight(currentHeight, pdfConfig.subLineHeight * 2);
-    addText(doc, props.business?.address || "", docWidth - marginRight, currentHeight.value, { align: "right" });
-    addHeight(currentHeight, pdfConfig.subLineHeight);
-    addText(doc, props.business?.phone || "", docWidth - marginRight, currentHeight.value, { align: "right" })
-    setFontSize(doc, pdfConfig.fieldTextSize);
-    addHeight(currentHeight, pdfConfig.subLineHeight);
-    addText(doc, props.business?.email || "", docWidth - marginRight, currentHeight.value, { align: "right" })
-    addHeight(currentHeight, pdfConfig.subLineHeight);
-
-    addText(doc, props.business?.email_1 || "", docWidth - marginRight, currentHeight.value, { align: "right" });
-
-    if (props.business?.email_1) {
-        addHeight(currentHeight, pdfConfig.subLineHeight);
-    }
-
-    addText(doc, props.business?.website || "", docWidth - marginRight, currentHeight.value, { align: "right" });
-    addHeight(currentHeight, pdfConfig.subLineHeight);
-}
-
-export const addClientAndInvoiceInfo = (doc: jsPDF, pdfConfig: Required<PdfConfig>, currentHeight: CurrentHeight, docWidth: number, props: InvoiceProps) => {
-    const marginLeft = pdfConfig.margin.left || 10;
-    const marginRight = pdfConfig.margin.right || 10;
-
-    setFontColor(doc, pdfConfig.textFontColor);
-    setFontSize(doc, pdfConfig.fieldTextSize);
-    addHeight(currentHeight, pdfConfig.lineHeight);
-
-
-    addText(doc, props.client?.label, marginLeft, currentHeight.value)
-    if (props.client?.label) {
-        currentHeight.value += pdfConfig.lineHeight;
-    }
-
-    setFontColor(doc, pdfConfig.headerFontColor);
-    setFontSize(doc, pdfConfig.headerTextSize - 5);
-    addText(doc, props.client?.name, marginLeft, currentHeight.value)
-
-    if (props.invoice?.label && props.invoice?.num) {
-        addText(doc, props.invoice?.label + props.invoice?.num,
-            docWidth - marginRight,
-            currentHeight.value,
-            { align: "right" }
-        )
-        currentHeight.value += pdfConfig.lineHeight;
-    }
-
-    setFontColor(doc, pdfConfig.textFontColor);
-    setFontSize(doc, pdfConfig.fieldTextSize - 2);
-
-
-    if (props.client?.address || props.invoice?.invDate) {
-        addText(doc, props.client?.address, marginLeft, currentHeight.value)
-        addText(doc, props.invoice?.invDate, docWidth - marginRight, currentHeight.value, { align: "right" })
-        addHeight(currentHeight, pdfConfig.subLineHeight);
-    }
-
-    if (props.client?.phone || props.invoice?.invGenDate) {
-        addText(doc, props.client?.phone, marginLeft, currentHeight.value)
-        addText(doc, props.invoice?.invGenDate, docWidth - marginRight, currentHeight.value, { align: "right" })
-        addHeight(currentHeight, pdfConfig.subLineHeight);
-    }
-
-    if (props.client?.email) {
-        addText(doc, props.client.email, marginLeft, currentHeight.value)
-        addHeight(currentHeight, pdfConfig.subLineHeight);
-    }
-
-    addText(doc, props.client?.otherInfo, marginLeft, currentHeight.value)
-    if (!props.client?.otherInfo) {
-        currentHeight.value -= pdfConfig.subLineHeight
-    }
-}
-
-export const addInvoiceDesc = (doc: jsPDF, pdfConfig: Required<PdfConfig>, props: InvoiceProps, currentHeight: CurrentHeight, docWidth: number) => {
-    const marginLeft = pdfConfig.margin.left || 10;
-
-    setFontSize(doc, pdfConfig.labelTextSize);
-    setFontColor(doc, pdfConfig.headerFontColor);
-
-    addText(doc, props.invoice?.invDescLabel || "", marginLeft, currentHeight.value)
-    addHeight(currentHeight, pdfConfig.subLineHeight);
-    setFontColor(doc, pdfConfig.textFontColor);
-    setFontSize(doc, pdfConfig.fieldTextSize - 1);
-
-    const lines = doc.splitTextToSize(props.invoice?.invDesc || "", docWidth / 2);
-
-    addText(doc, lines, marginLeft, currentHeight.value)
-    addHeight(currentHeight, doc.getTextDimensions(lines).h > 5
-        ? doc.getTextDimensions(lines).h + 6
-        : pdfConfig.lineHeight)
+    setFontColor(props.doc, props.pdfConfig.textFontColor);
+    addHeight(props.currentHeight, props.pdfConfig.subLineHeight * 2);
+    props.invoiceProps.businessInfo?.forEach((line) => {
+        addText(
+            props.doc,
+            line,
+            props.docWidth - marginRight,
+            props.currentHeight.value,
+            {
+                align: "right",
+            }
+        );
+        addHeight(props.currentHeight, props.pdfConfig.subLineHeight);
+    });
 };
 
-export const addStamp = (doc: jsPDF, props: InvoiceProps, docHeight: number, pdfConfig: PdfConfig) => {
+export const addClientAndInvoiceInfo = (
+    props: Omit<TableProps, "defaultColumnWidth">
+) => {
+    const marginLeft = props.pdfConfig.margin.left || 10;
+    const marginRight = props.pdfConfig.margin.right || 10;
+
+    setFontColor(props.doc, props.pdfConfig.textFontColor);
+    setFontSize(props.doc, props.pdfConfig.fieldTextSize);
+    addHeight(props.currentHeight, props.pdfConfig.lineHeight);
+
+    addText(
+        props.doc,
+        props.invoiceProps.clientLabel,
+        marginLeft,
+        props.currentHeight.value
+    );
+    if (props.invoiceProps.clientLabel) {
+        props.currentHeight.value += props.pdfConfig.lineHeight;
+    }
+
+    setFontColor(props.doc, props.pdfConfig.headerFontColor);
+    setFontSize(props.doc, props.pdfConfig.headerTextSize - 5);
+    addText(
+        props.doc,
+        props.invoiceProps.clientName,
+        marginLeft,
+        props.currentHeight.value
+    );
+
+    if (
+        props.invoiceProps.invoice?.label &&
+        props.invoiceProps.invoice?.number
+    ) {
+        addText(
+            props.doc,
+            props.invoiceProps.invoice?.label +
+                props.invoiceProps.invoice?.number,
+            props.docWidth - marginRight,
+            props.currentHeight.value,
+            { align: "right" }
+        );
+        props.currentHeight.value += props.pdfConfig.lineHeight;
+    }
+
+    setFontColor(props.doc, props.pdfConfig.textFontColor);
+    setFontSize(props.doc, props.pdfConfig.fieldTextSize - 2);
+
+    const clientInfo = props.invoiceProps.clientInfo || [];
+
+    clientInfo.forEach((line) => {
+        addText(props.doc, line, marginLeft, props.currentHeight.value);
+        addHeight(props.currentHeight, props.pdfConfig.subLineHeight);
+    });
+
+    if (props.invoiceProps.invoice?.invDate) {
+        addText(
+            props.doc,
+            props.invoiceProps.invoice?.invDate,
+            props.docWidth - marginRight,
+            props.currentHeight.value -
+                clientInfo.length * props.pdfConfig.subLineHeight,
+            { align: "right" }
+        );
+    }
+
+    if (props.invoiceProps.invoice?.invGenDate) {
+        addText(
+            props.doc,
+            props.invoiceProps.invoice?.invGenDate,
+            props.docWidth - marginRight,
+            props.currentHeight.value -
+                (clientInfo.length - 1) * props.pdfConfig.subLineHeight,
+            { align: "right" }
+        );
+    }
+};
+
+export const addInvoiceDesc = (
+    props: Omit<TableProps, "defaultColumnWidth">
+) => {
+    const marginLeft = props.pdfConfig.margin.left || 10;
+
+    setFontSize(props.doc, props.pdfConfig.labelTextSize);
+    setFontColor(props.doc, props.pdfConfig.headerFontColor);
+
+    addText(
+        props.doc,
+        props.invoiceProps.invoice?.invoiceDescriptionLabel || "",
+        marginLeft,
+        props.currentHeight.value
+    );
+    addHeight(props.currentHeight, props.pdfConfig.subLineHeight);
+    setFontColor(props.doc, props.pdfConfig.textFontColor);
+    setFontSize(props.doc, props.pdfConfig.fieldTextSize - 1);
+
+    const lines = props.doc.splitTextToSize(
+        props.invoiceProps.invoice?.invoiceDescription || "",
+        props.docWidth / 2
+    );
+
+    addText(props.doc, lines, marginLeft, props.currentHeight.value);
+    addHeight(
+        props.currentHeight,
+        props.doc.getTextDimensions(lines).h > 5
+            ? props.doc.getTextDimensions(lines).h + 6
+            : props.pdfConfig.lineHeight
+    );
+};
+
+export const addStamp = (
+    doc: jsPDF,
+    invoiceProps: InvoiceProps,
+    docHeight: number,
+    pdfConfig: PdfConfig
+) => {
     const marginLeft = pdfConfig.margin?.left || 10;
     const marginBottom = pdfConfig.margin?.bottom || 10;
 
-    if (props.stamp?.src) {
+    if (invoiceProps.stamp?.src) {
         const stamp = new Image();
-        stamp.src = props.stamp.src;
-        const stampWidth = props.stamp.style?.width || 64;
-        const stampHeight = props.stamp.style?.height || 64;
+        stamp.src = invoiceProps.stamp.src;
+        const stampWidth = invoiceProps.stamp.style?.width || 64;
+        const stampHeight = invoiceProps.stamp.style?.height || 64;
 
-        if (props.stamp.type) {
-            addImage(doc, stamp, marginLeft + (props.stamp.style?.margin?.left || 0), docHeight - marginBottom - stampHeight + (props.stamp.style?.margin?.top || 0), stampWidth, stampHeight, props.stamp.type);
+        if (invoiceProps.stamp.type) {
+            addImage(
+                doc,
+                stamp,
+                marginLeft + (invoiceProps.stamp.style?.margin?.left || 0),
+                docHeight -
+                    marginBottom -
+                    stampHeight +
+                    (invoiceProps.stamp.style?.margin?.top || 0),
+                stampWidth,
+                stampHeight,
+                invoiceProps.stamp.type
+            );
         } else {
-            addImage(doc, stamp, marginLeft + (props.stamp.style?.margin?.left || 0), docHeight - marginBottom - stampHeight + (props.stamp.style?.margin?.top || 0), stampWidth, stampHeight);
+            addImage(
+                doc,
+                stamp,
+                marginLeft + (invoiceProps.stamp.style?.margin?.left || 0),
+                docHeight -
+                    marginBottom -
+                    stampHeight +
+                    (invoiceProps.stamp.style?.margin?.top || 0),
+                stampWidth,
+                stampHeight
+            );
         }
     }
-}
+};

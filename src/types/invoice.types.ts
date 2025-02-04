@@ -1,112 +1,98 @@
-import jsPDF from 'jspdf';
+import jsPDF from "jspdf";
 
-export type OutputType = "arraybuffer" | "blob" | "bloburi" | "bloburl" | "datauristring" | "dataurlstring" | "pdfobjectnewwindow" | "pdfjsnewwindow" | "dataurlnewwindow" | "dataurl" | "datauri" | "save"
+export type OutputType = "blob" | "save" | "arraybuffer";
 
 export type ReturnObj = {
-    pagesNumber: number
-    jsPDFDocObject: jsPDF
-    blob: Blob
-    dataUriString: string
-    arrayBuffer: ArrayBuffer
-}
+    pagesNumber: number;
+    jsPDFDocObject: jsPDF;
+    blob: Blob | URL;
+    dataUriString: string;
+    arrayBuffer: ArrayBuffer;
+};
 
 export type PdfConfig = {
-    headerTextSize?: number
-    labelTextSize?: number
-    fieldTextSize?: number
-    lineHeight?: number
-    subLineHeight?: number
-    headerFontColor?: string
-    textFontColor?: string
-    margin?: Margin
+    headerTextSize?: number;
+    labelTextSize?: number;
+    fieldTextSize?: number;
+    lineHeight?: number;
+    subLineHeight?: number;
+    headerFontColor?: string;
+    textFontColor?: string;
+    margin?: Margin;
     spacing?: {
-        beforeTable?: number
-        afterBusinessInfo?: number
-    }
-    orientation?: "landscape" | "portrait"
-    compress?: boolean
-}
+        afterClientInfo?: number;
+        afterBusinessInfo?: number;
+    };
+    orientation?: "landscape" | "portrait";
+    compress?: boolean;
+};
 
 export type InvoiceProps = {
     outputType: OutputType;
-    fileName: string
-    onJsPDFDocCreation?: (doc: jsPDF) => void
-    returnJsPDFDocObject?: boolean
-    pdfConfig?: PdfConfig
-    logo?: Logo
+    fileName: string;
+    beforePDFCreation?: (doc: jsPDF) => void;
+    afterPDFCreation?: (returnObj: Partial<ReturnObj>) => void;
+    returnJsPDFDocObject?: boolean;
+    pdfConfig?: PdfConfig;
+    logo?: Logo;
     stamp?: Logo & {
-        inAllPages?: boolean
-    }
-    business?: PersonInfo & {
-        email_1?: string
-        website?: string
-    }
-    client?: PersonInfo & {
-        label?: string
-        otherInfo?: string
-    }
+        inAllPages?: boolean;
+    };
+    businessName?: string;
+    businessInfo?: string[];
+    clientLabel?: string;
+    clientName?: string;
+    clientInfo?: string[];
     invoice?: {
-        label?: string
-        num?: number
-        invDate?: string
-        invGenDate?: string
-        borderAfterHeader?: boolean
-        headerBorder?: boolean
-        tableBodyBorder?: boolean
-        header?: TableRow
-        table?: TableRow[]
-        invDescLabel?: string
-        invDesc?: string
+        label?: string;
+        number?: number;
+        invDate?: string;
+        invGenDate?: string;
+        borderAfterHeader?: boolean;
+        header?: TableRow;
+        table?: TableRow[];
+        invoiceDescriptionLabel?: string;
+        invoiceDescription?: string;
         additionalRows?: {
-            col1?: string
-            col2?: string
-            col3?: string
-            style?: Style
-        }[]
-    }
-    footer?: {
-        text?: string
-    }
-    pageEnable?: boolean
-    pageLabel?: string
+            key: string;
+            value: string;
+            style?: Style;
+        }[];
+    };
+    footer?: string;
+    displayPageLabel?: boolean;
+    pageLabel?: string;
     pageDelimiter?: string;
-}
+};
 
 type Style = Partial<{
-    width?: number
-    height?: number
-    fontSize?: number
-    align?: 'left' | 'center' | 'right'
-    margin?: Partial<Margin>
-}>
+    width?: number;
+    height?: number;
+    fontSize?: number;
+    align?: "left" | "center" | "right";
+    margin?: Partial<Margin>;
+}>;
 
 type Margin = {
-    top?: number
-    right?: number
-    bottom?: number
-    left?: number
-}
+    top?: number;
+    right?: number;
+    bottom?: number;
+    left?: number;
+};
 
 type Logo = {
-    src?: string
-    type?: string
-    style?: Style
-}
+    src?: string;
+    type?: string;
+    style?: Style;
+};
 
-type PersonInfo = {
-    name?: string
-    address?: string
-    phone?: string
-    email?: string
-}
+export type TableRow = TableEntry[];
 
-export type TableRow = TableEntry[]
-
-type TableEntry = {
+export type TableEntry = {
     text: string;
     style?: Partial<Style>;
-}
+};
 
 export type CurrentHeight = {
     value: number;
-}
+};

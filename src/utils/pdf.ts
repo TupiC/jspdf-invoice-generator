@@ -1,11 +1,15 @@
-import jsPDF, { TextOptionsLight } from 'jspdf';
-import { CurrentHeight, InvoiceProps, ReturnObj } from '../types/invoice.types';
+import jsPDF, { TextOptionsLight } from "jspdf";
+import { CurrentHeight, InvoiceProps, ReturnObj } from "../types/invoice.types";
 
-export const splitTextAndGetHeight = (doc: jsPDF, text: string, size: number) => {
-    const lines = doc.splitTextToSize(text, size);
+export const splitTextAndGetHeight = (
+    doc: jsPDF,
+    text: string,
+    size: number
+) => {
+    const line = doc.splitTextToSize(text, size) as string;
     return {
-        text: lines,
-        height: doc.getTextDimensions(lines).h,
+        text: line,
+        height: doc.getTextDimensions(line).h,
     };
 };
 
@@ -25,42 +29,61 @@ export const getPdfConfig = (props: InvoiceProps) => {
             right: props.pdfConfig?.margin?.right || 10,
         },
         spacing: {
-            beforeTable: props.pdfConfig?.spacing?.beforeTable || 10,
-            afterBusinessInfo: props.pdfConfig?.spacing?.afterBusinessInfo || 10,
+            beforeTable: props.pdfConfig?.spacing?.afterClientInfo || 10,
+            afterBusinessInfo:
+                props.pdfConfig?.spacing?.afterBusinessInfo || 10,
         },
         compress: props.pdfConfig?.compress || false,
-        orientation: props.pdfConfig?.orientation || 'portrait'
-    }
-}
+        orientation: props.pdfConfig?.orientation || "portrait",
+    };
+};
 
-export const addText = (doc: jsPDF, text: string | undefined, x: number, y: number, options?: TextOptionsLight) => {
+export const addText = (
+    doc: jsPDF,
+    text: string | undefined,
+    x: number,
+    y: number,
+    options?: TextOptionsLight
+) => {
     if (text) {
         doc.text(text, x, y, options);
     }
-}
+};
 
-export const addImage = (doc: jsPDF, image: HTMLImageElement, x: number, y: number, w: number, h: number, type?: string) => {
+export const addImage = (
+    doc: jsPDF,
+    image: HTMLImageElement,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    type?: string
+) => {
     if (type) {
         doc.addImage(image, type, x, y, w, h);
     } else {
         doc.addImage(image, x, y, w, h);
     }
-}
+};
 
 export const addHeight = (currentHeight: CurrentHeight, height: number) => {
     currentHeight.value += height;
     return currentHeight.value;
-}
+};
 
 export const setFontColor = (doc: jsPDF, color: string) => {
     doc.setTextColor(color);
-}
+};
 
 export const setFontSize = (doc: jsPDF, size: number) => {
     doc.setFontSize(size);
-}
+};
 
-export const handleSave = (doc: jsPDF, props: InvoiceProps, returnObj: Partial<ReturnObj>) => {
+export const handleSave = (
+    doc: jsPDF,
+    props: InvoiceProps,
+    returnObj: Partial<ReturnObj>
+) => {
     switch (props.outputType) {
         case "save":
             doc.save(props.fileName);
@@ -71,25 +94,12 @@ export const handleSave = (doc: jsPDF, props: InvoiceProps, returnObj: Partial<R
                 blob: doc.output("blob"),
             };
             break;
-        case "datauristring":
-            returnObj = {
-                ...returnObj,
-                dataUriString: doc.output("datauristring", {
-                    filename: props.fileName,
-                }),
-            };
-            break;
         case "arraybuffer":
+        default:
             returnObj = {
                 ...returnObj,
                 arrayBuffer: doc.output("arraybuffer"),
             };
-            break;
-        default:
-            doc.output("dataurlnewwindow", {
-                filename: props.fileName,
-            });
     }
-
     return returnObj;
-}
+};
